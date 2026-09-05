@@ -227,42 +227,33 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
     $h[] = '</div></footer>';
 
     $h[] = '<div class="toast" id="toast"></div>';
-    $h[] = '<script src="/assets/js/app.js" defer></script>';
+    $h[] = '<script src="/assets/js/ads.js" defer></script>
+<script src="/assets/js/app.js" defer></script>';
     $h[] = '</body></html>';
 
     file_put_contents($path, implode("\n", $h));
 }
 
+// 列表卡片：只展示缩略图 + 标题（模型/视频/日期标签不展示）
 function card_static(array $r): string
 {
     $id    = (int)$r['id'];
     $slug  = (string)$r['slug'];
     $title = (string)$r['title'];
-    $model = (string)$r['model'];
     $cw    = (int)$r['cover_w'];
     $ch    = (int)$r['cover_h'];
-    $date  = (string)$r['reviewed_at'];
     $url   = detail_url($slug);
     $thumb = $r['cover'] ? thumb_url($id, 1, 400) : '';
-    $isVid = ((string)($r['media_type'] ?: 'image')) === 'video';
 
     $ratio = ($cw && $ch) ? ' style="aspect-ratio:' . $cw . '/' . $ch . '"' : '';
     $img = $thumb
         ? '<img src="' . h($thumb) . '" width="' . ($cw ?: 400) . '" height="' . ($ch ?: 400) .
           '" alt="' . h($title) . '" loading="lazy" decoding="async">'
         : '<span class="ph">无图片</span>';
-    $tags  = $model ? '<span class="tag model">' . h($model) . '</span>' : '';
-    $video = $isVid ? '<span class="tag video">视频</span>' : '';
-    $m     = fmt_date($date);
 
     return '<a class="card" href="' . h($url) . '">'
          . '<span class="thumb"' . $ratio . '>' . $img . '</span>'
-         . '<span class="body">'
-         . '<span class="t">' . h($title) . '</span>'
-         . '<span class="meta">' . $tags . $video
-         . '<span class="tag">' . h($m) . '</span>'
-         . '</span>'
-         . '</span>'
+         . '<span class="body"><span class="t">' . h($title) . '</span></span>'
          . '</a>';
 }
 

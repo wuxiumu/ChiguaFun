@@ -340,3 +340,66 @@ a:hover { text-decoration: underline; }
 .share-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
 .share-actions .btn { padding: 9px 6px; font-size: 13px; text-align: center; }
 @media (max-width: 420px) { .share-actions { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------------- 相关推荐（PC 4 列 16 个；移动端 2 列只显示前 10） ---------------- */
+.related { margin: 26px 0 0; }
+.related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.rcard {
+    display: block; background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; color: inherit;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.rcard:hover { text-decoration: none; transform: translateY(-2px); box-shadow: var(--shadow); }
+.rthumb { display: block; aspect-ratio: 1 / 1; background: #eef0f4; overflow: hidden; }
+.rthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rthumb .ph { height: 100%; display: grid; place-items: center; color: #b6bcc7; font-size: 12px; }
+.rt {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    padding: 8px 10px 10px; font-size: 13px; line-height: 1.45;
+}
+@media (max-width: 900px) {
+    .related-grid { grid-template-columns: repeat(2, 1fr); }
+    .related-grid .rcard:nth-child(n+11) { display: none; }
+}
+
+/* ---------------- 广告位（ad_slots.json 驱动） ---------------- */
+/* 广告浮标：移动端 in-flow 插入导航下方居中；PC(≥900px) 固定右上角竖排 */
+.ad-float {
+    display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px;
+    justify-content: center; padding: 10px 12px 0;
+}
+@media (min-width: 900px) {
+    .ad-float {
+        position: fixed; top: 74px; right: 14px; z-index: 60;
+        flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; padding: 0;
+    }
+}
+.ad-float-item {
+    border: 1px solid var(--border); background: var(--panel); color: var(--brand);
+    border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+    box-shadow: var(--shadow); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ad-float-item:hover { background: var(--brand-soft); }
+.ad-modal {
+    position: fixed; inset: 0; z-index: 130; background: rgba(15, 18, 22, .6);
+    display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.ad-modal.on { display: flex; }
+.ad-modal-box {
+    position: relative; width: min(400px, 92vw); max-height: 88vh; overflow: auto;
+    background: var(--panel); border-radius: 16px; padding: 16px; text-align: center;
+}
+.ad-modal-img { max-width: 100%; border-radius: 10px; display: block; margin: 0 auto; }
+.ad-modal-cap { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+.ad-modal-jump { margin-top: 12px; display: inline-block; }
+.ad-modal-close {
+    position: absolute; top: 8px; right: 10px; border: 0; background: var(--chip); color: var(--text);
+    width: 30px; height: 30px; border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer;
+}
+.ad-card { cursor: pointer; text-align: left; border-style: dashed; }
+.ad-thumb { position: relative; min-height: 120px; display: grid; place-items: center; background: var(--brand-soft); }
+.ad-label { color: var(--brand); font-size: 16px; font-weight: 700; padding: 0 12px; text-align: center; }
+.ad-tag {
+    position: absolute; top: 8px; right: 8px; font-size: 11px; color: var(--muted);
+    background: var(--chip); border-radius: 6px; padding: 1px 7px;
+}

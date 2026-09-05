@@ -72,23 +72,17 @@
     }
 
     // ------------------------------------------------------- 卡片渲染
+    // 列表卡片：只展示图片 + 标题（其余模型/视频/日期标签不展示）
     function cardHtml(it) {
         var cover = it.cover ? '<img src="' + escapeHtml(it.cover) +
             '" width="' + (it.cover_w || 400) + '" height="' + (it.cover_h || 400) +
             '" alt="' + escapeHtml(it.title) + '" loading="lazy" decoding="async">' :
             '<span class="ph">无图片</span>';
-        var model = it.model ? '<span class="tag model">' + escapeHtml(it.model) + '</span>' : '';
-        var video = it.media_type === 'video' ? '<span class="tag video">视频</span>' : '';
         var ratio = (it.cover_w && it.cover_h) ? ' style="aspect-ratio:' + it.cover_w + '/' + it.cover_h + '"' : '';
         return '' +
             '<a class="card" href="' + escapeHtml(it.url) + '">' +
                 '<span class="thumb"' + ratio + '>' + cover + '</span>' +
-                '<span class="body">' +
-                    '<span class="t">' + escapeHtml(it.title) + '</span>' +
-                    '<span class="meta">' + model + video +
-                        '<span class="tag">' + escapeHtml(fmtDate(it.reviewed_at)) + '</span>' +
-                    '</span>' +
-                '</span>' +
+                '<span class="body"><span class="t">' + escapeHtml(it.title) + '</span></span>' +
             '</a>';
     }
 
@@ -162,6 +156,9 @@
         // 图片淡入 & 错误兜底
         $$('.masonry img, .detail-media img', main).forEach(fadeImg);
 
+        // 列表广告占位（ads.js 提供，未加载时忽略）
+        if (window.injectListAds) window.injectListAds();
+
         // 滚动到顶
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -225,6 +222,7 @@
                 if (ms && data.items && data.items.length) {
                     ms.outerHTML = '<div class="masonry">' + data.items.map(cardHtml).join('') + '</div>';
                     $$('.masonry img').forEach(fadeImg);
+                    if (window.injectListAds) window.injectListAds();
                 }
                 // 清掉筛选/结果行与分页，回到“纯随机”视图
                 var rl = $('.result-line'); if (rl) rl.remove();

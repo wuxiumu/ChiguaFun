@@ -193,6 +193,41 @@ function get_prompts(int $id): array
     return $st->fetchAll();
 }
 
+/**
+ * 相关推荐：同模型优先（按收录时间倒序），不足 limit 再补近期其它模型；排除自身。
+ * 返回精简字段（id/slug/title/cover/cover_w/cover_h），供详情页.related-grid 使用。
+ */
+function related_items(array $cur, int $limit = 16): array
+{
+    $db    = db();
+    $out   = [];
+    $model = (string)$cur['model'];
+    if ($model !== '') {
+        $st = $db->prepare(
+            'SELECT id,slug,title,cover,cover_w,cover_h FROM items
+             WHERE model = :m AND id != :id ORDER BY reviewed_at DESC, id DESC LIMIT :l'
+        );
+        $st->bindValue(':m', $model);
+        $st->bindValue(':id', (int)$cur['id']);
+        $st->bindValue(':l', $limit, PDO::PARAM_INT);
+        $st->execute();
+        $out = $st->fetchAll();
+    }
+    if (count($out) < $limit) {
+        $need = $limit - count($out);
+        $ids  = array_map(static fn($r): int => (int)$r['id'], $out);
+        $ids[] = (int)$cur['id'];
+        $st = $db->query(
+            'SELECT id,slug,title,cover,cover_w,cover_h FROM items WHERE id NOT IN ('
+            . implode(',', $ids) . ') ORDER BY reviewed_at DESC, id DESC LIMIT ' . (int)$need
+        );
+        foreach ($st as $r) {
+            $out[] = $r;
+        }
+    }
+    return $out;
+}
+
 /** 详情上下篇：无搜索词时用索引比较（快），有搜索词时全量取 id 定位 */
 function get_neighbors(array $cur, string $q, string $model): array
 {

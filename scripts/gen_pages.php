@@ -117,6 +117,7 @@ function static_detail_html(array $cur, string $site): string
         'site_name' => 'OpenNana 提示词库',
         'prompts'   => $sharePrompts,
     ];
+    $related = related_items($cur, 16);   // 相关推荐：PC 16 个 4 列，移动端 CSS 只显示前 10
 
     $ld = [
         '@context' => 'https://schema.org',
@@ -265,6 +266,21 @@ function static_detail_html(array $cur, string $site): string
             </div>
         </div>
     </div>
+    <?php if ($related): ?>
+    <div class="related">
+        <div class="sec-title"><span>相关推荐</span></div>
+        <div class="related-grid">
+            <?php foreach ($related as $r): ?>
+                <a class="rcard" href="<?= h(detail_url((string)$r['slug'])) ?>">
+                    <span class="rthumb">
+                        <?php if ($r['cover']): ?><img src="<?= h(thumb_url((int)$r['id'], 1, 400)) ?>" alt="<?= h((string)$r['title']) ?>" loading="lazy"><?php else: ?><span class="ph">无图片</span><?php endif; ?>
+                    </span>
+                    <span class="rt"><?= h((string)$r['title']) ?></span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
     <a class="back" href="/">← 返回图库</a>
 </div>
 <footer class="site-foot"><div class="inner">
@@ -299,6 +315,7 @@ function static_detail_html(array $cur, string $site): string
 <script type="application/json" id="share-data"><?= json_encode($shareData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
 <script src="/assets/js/qrcode.js" defer></script>
 <script src="/assets/js/poster.js" defer></script>
+<script src="/assets/js/ads.js" defer></script>
 <script src="/assets/js/app.js" defer></script>
 </body>
 </html>
