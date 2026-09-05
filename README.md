@@ -15,11 +15,12 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![No deps](https://img.shields.io/badge/dependencies-none-brightgreen)
 
-<!-- 👇 把下面的 src 换成你托管在 CDN 上的首页截图（建议 1200px 宽 GIF/截图） -->
+<!-- 👇 首页截图：把下面一行取消注释，并把 src 换成你托管在 CDN 上的截图（建议 1200px 宽的 GIF/截图，对 star 转化帮助极大）
 <img src="https://your-cdn.example.com/opennana/screenshot.png" alt="OpenNana gallery screenshot" width="720" />
+-->
 
-<!-- 👇 Live Demo：部署后把链接填到这里（对 star 转化帮助极大） -->
-**🔗 Live Demo:** _https://your-demo.example.com_
+<!-- 👇 Live Demo：部署后把占位地址换成你的真实站点 -->
+**🔗 Live Demo:** _（部署后填写你的站点地址）_
 
 </div>
 
