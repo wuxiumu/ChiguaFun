@@ -158,6 +158,11 @@ Two gotchas: the API host is `api.opennana.com` (the main domain 404s on `/api/*
 - **Static first paint**: `index.html` ships the first 36 cards server-rendered; JS hydrates paging/search.
 - **gzip + long-cache + ETag 304** via `router.php`; lazy-loaded images with fade-in and broken-image fallback.
 
+### Third-party credits
+
+- [`qrcode-generator`](https://github.com/kazuhikoarase/qrcode-generator) (MIT) — bundled at `assets/js/qrcode.js`, draws the poster/share QR codes locally (no network).
+- Everything else is hand-rolled vanilla PHP/JS/CSS — **no framework, no build step**.
+
 ### ⚖️ Disclaimer
 
 This repository contains **engine code only** — no prompt data, no images. Data is fetched at run time by `scrape.py` from publicly accessible endpoints. All prompts and images belong to their original authors and [opennana.com](https://opennana.com); this project is for **learning and personal self-hosting**. Please respect the upstream site's terms and rate-limit your scraping. Remove your instance if requested.

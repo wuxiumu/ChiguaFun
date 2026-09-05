@@ -79,6 +79,23 @@ function render_detail(string $slug, string $q, string $model): void
     $coverAbs = abs_url($cover);   // cdn 模式已是绝对地址，local 模式补站点源
     $model    = (string)$cur['model'];
 
+    // 分享数据（供 poster.js 画竖版海报）：标题 / 链接 / 封面原图 / 按语言分组的提示词
+    $sharePrompts = [];
+    foreach ($prompts as $p) {
+        $lbl = prompt_lang_label((string)$p['label']);
+        $lg  = $lbl === '中文' ? 'zh' : ($lbl === 'English' ? 'en' : 'p' . (int)$p['seq']);
+        $sharePrompts[] = ['lang' => $lg, 'label' => $lbl, 'text' => (string)$p['body']];
+    }
+    $shareData = [
+        'title'     => $title,
+        'slug'      => $slug,
+        'page_url'  => $pageUrl,
+        'cover'     => $images ? img_url((string)$images[0]) : '',
+        'model'     => $model,
+        'site_name' => 'OpenNana 提示词库',
+        'prompts'   => $sharePrompts,
+    ];
+
     render_seo_head([
         'title' => $title . ' · ' . $model . ' 提示词',
         'descr' => $descr,
@@ -124,6 +141,9 @@ function render_detail(string $slug, string $q, string $model): void
 
                 <div class="detail-side">
                     <h1><?= h($title) ?></h1>
+                    <div class="detail-ops">
+                        <button type="button" id="share-btn" class="btn btn-primary">📤 分享海报</button>
+                    </div>
 
                     <dl class="kv">
                         <?php if ($model):    ?><dt>模型</dt><dd><?= h($model) ?></dd><?php endif; ?>
@@ -184,6 +204,35 @@ function render_detail(string $slug, string $q, string $model): void
             <span><span class="kbd">Esc</span> 返回列表</span>
         </p>
     </div>
+
+    <?php /* ---------- 分享弹窗（竖版海报预览 + 多渠道分享） ---------- */ ?>
+    <div class="share-modal" id="share-modal" role="dialog" aria-modal="true" aria-label="分享">
+        <div class="share-box">
+            <div class="share-head">
+                <span class="share-title">分享</span>
+                <div class="share-langs" role="group" aria-label="海报提示词语言">
+                    <button type="button" class="slang" data-lang="zh">中文</button>
+                    <button type="button" class="slang" data-lang="en">English</button>
+                </div>
+                <button type="button" class="share-close" id="share-close" aria-label="关闭">×</button>
+            </div>
+            <div class="share-body">
+                <div class="poster-preview"><img id="poster-preview" alt="海报预览"></div>
+                <div class="qr-box" id="qr-box"><img id="qr-img" alt="二维码"><p>扫一扫查看原文</p></div>
+            </div>
+            <div class="share-actions">
+                <button type="button" class="btn btn-primary" id="poster-save">💾 保存海报</button>
+                <button type="button" class="btn" id="poster-share-img">🖼️ 分享图片</button>
+                <button type="button" class="btn" id="share-weibo">微博</button>
+                <button type="button" class="btn" id="share-qr">二维码</button>
+                <button type="button" class="btn" id="share-copy">复制链接</button>
+                <button type="button" class="btn" id="share-system">系统分享</button>
+            </div>
+        </div>
+    </div>
+    <script type="application/json" id="share-data"><?= json_encode($shareData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
+    <script src="/assets/js/qrcode.js" defer></script>
+    <script src="/assets/js/poster.js" defer></script>
     <?php
     render_foot();
 }
