@@ -1,0 +1,38 @@
+# ---- 数据与媒体（体积巨大 / 由 scrape.py 或 CDN 数据包还原，不进库）----
+/data/
+/images/
+/thumbs/
+
+# ---- 运行时缓存（SQLite 索引 + 记忆化，可随时重建）----
+/cache/
+
+# ---- 本地配置（含站点域名 / CDN，按 config.example.php 自建）----
+/config.php
+
+# ---- 爬虫断点状态 ----
+/.state.json
+
+# ---- 流量统计运行时文件（api/tj.php 生成）----
+/api/.traffic_day
+.traffic_day
+
+# ---- 静态化生成物（由 scripts/gen_static.php 从 DB 生成）----
+/index.html
+/index.html.tmp
+/sitemap.xml
+/sitemap.xml.tmp
+/sitemap-items.xml
+/sitemap-items.xml.tmp
+/robots.txt
+
+# ---- 系统 / 编辑器 ----
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
