@@ -270,6 +270,7 @@ a:hover { text-decoration: underline; }
 .card .thumb, .dimg-wrap, .lb-fig { position: relative; }
 .dimg-wrap { display: block; }
 .card .thumb::after,
+.gcard-thumb::after,
 .dimg-wrap::after,
 .lb-fig::after {
     content: var(--wm-text, "");
@@ -341,25 +342,29 @@ a:hover { text-decoration: underline; }
 .share-actions .btn { padding: 9px 6px; font-size: 13px; text-align: center; }
 @media (max-width: 420px) { .share-actions { grid-template-columns: repeat(2, 1fr); } }
 
-/* ---------------- 相关推荐（PC 4 列 16 个；移动端 2 列只显示前 10） ---------------- */
-.related { margin: 26px 0 0; }
-.related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-.rcard {
+/* ---------------- 统一卡片 .gcard（首页列表 / 相关推荐 / 广告占位共用，cards.js 渲染） ---------------- */
+.gcard {
     display: block; background: var(--panel); border: 1px solid var(--border);
-    border-radius: var(--radius); overflow: hidden; color: inherit;
-    transition: transform .15s ease, box-shadow .15s ease;
+    border-radius: var(--radius); overflow: hidden; color: inherit; margin: 0 0 18px;
+    transition: transform .15s ease, box-shadow .15s ease; break-inside: avoid;
 }
-.rcard:hover { text-decoration: none; transform: translateY(-2px); box-shadow: var(--shadow); }
-.rthumb { display: block; aspect-ratio: 1 / 1; background: #eef0f4; overflow: hidden; }
-.rthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.rthumb .ph { height: 100%; display: grid; place-items: center; color: #b6bcc7; font-size: 12px; }
-.rt {
+.gcard:hover { text-decoration: none; transform: translateY(-2px); box-shadow: var(--shadow); }
+.gcard-thumb { display: block; aspect-ratio: 1 / 1; background: #eef0f4; overflow: hidden; position: relative; }
+.gcard-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .3s ease; }
+.gcard-thumb img.on { opacity: 1; }
+.gcard-thumb .ph { height: 100%; display: grid; place-items: center; color: #b6bcc7; font-size: 12px; }
+.gcard-t {
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     padding: 8px 10px 10px; font-size: 13px; line-height: 1.45;
 }
+
+/* ---------------- 相关推荐（PC 4 列 16 个；移动端 2 列只显示前 10） ---------------- */
+.related { margin: 26px 0 0; }
+.related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.related-grid .gcard { margin: 0; }
 @media (max-width: 900px) {
     .related-grid { grid-template-columns: repeat(2, 1fr); }
-    .related-grid .rcard:nth-child(n+11) { display: none; }
+    .related-grid .gcard:nth-child(n+11) { display: none; }
 }
 
 /* ---------------- 广告位（ad_slots.json 驱动） ---------------- */

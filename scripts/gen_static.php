@@ -227,33 +227,30 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
     $h[] = '</div></footer>';
 
     $h[] = '<div class="toast" id="toast"></div>';
-    $h[] = '<script src="/assets/js/ads.js" defer></script>
+    $h[] = '<script src="/assets/js/cards.js" defer></script>
+<script src="/assets/js/ads.js" defer></script>
 <script src="/assets/js/app.js" defer></script>';
     $h[] = '</body></html>';
 
     file_put_contents($path, implode("\n", $h));
 }
 
-// 列表卡片：只展示缩略图 + 标题（模型/视频/日期标签不展示）
+// 列表卡片：与 cards.js 的 .gcard 同构（方形缩略图 + 两行标题），首屏与 JS 重渲染一致
 function card_static(array $r): string
 {
     $id    = (int)$r['id'];
     $slug  = (string)$r['slug'];
     $title = (string)$r['title'];
-    $cw    = (int)$r['cover_w'];
-    $ch    = (int)$r['cover_h'];
     $url   = detail_url($slug);
     $thumb = $r['cover'] ? thumb_url($id, 1, 400) : '';
 
-    $ratio = ($cw && $ch) ? ' style="aspect-ratio:' . $cw . '/' . $ch . '"' : '';
     $img = $thumb
-        ? '<img src="' . h($thumb) . '" width="' . ($cw ?: 400) . '" height="' . ($ch ?: 400) .
-          '" alt="' . h($title) . '" loading="lazy" decoding="async">'
+        ? '<img src="' . h($thumb) . '" alt="' . h($title) . '" loading="lazy" decoding="async">'
         : '<span class="ph">无图片</span>';
 
-    return '<a class="card" href="' . h($url) . '">'
-         . '<span class="thumb"' . $ratio . '>' . $img . '</span>'
-         . '<span class="body"><span class="t">' . h($title) . '</span></span>'
+    return '<a class="gcard" href="' . h($url) . '">'
+         . '<span class="gcard-thumb">' . $img . '</span>'
+         . '<span class="gcard-t">' . h($title) . '</span>'
          . '</a>';
 }
 

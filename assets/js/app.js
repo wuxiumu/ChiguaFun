@@ -72,18 +72,9 @@
     }
 
     // ------------------------------------------------------- 卡片渲染
-    // 列表卡片：只展示图片 + 标题（其余模型/视频/日期标签不展示）
+    // 列表卡片：统一走 cards.js 模块（.gcard，与详情页相关推荐同款）
     function cardHtml(it) {
-        var cover = it.cover ? '<img src="' + escapeHtml(it.cover) +
-            '" width="' + (it.cover_w || 400) + '" height="' + (it.cover_h || 400) +
-            '" alt="' + escapeHtml(it.title) + '" loading="lazy" decoding="async">' :
-            '<span class="ph">无图片</span>';
-        var ratio = (it.cover_w && it.cover_h) ? ' style="aspect-ratio:' + it.cover_w + '/' + it.cover_h + '"' : '';
-        return '' +
-            '<a class="card" href="' + escapeHtml(it.url) + '">' +
-                '<span class="thumb"' + ratio + '>' + cover + '</span>' +
-                '<span class="body"><span class="t">' + escapeHtml(it.title) + '</span></span>' +
-            '</a>';
+        return Cards.html(it);
     }
 
     function pagerHtml(page, pages, baseParams) {
@@ -401,8 +392,25 @@
         });
     }
 
+    // 相关推荐：服务端内嵌 .related-data JSON，客户端用 cards.js 统一渲染（与首页同款卡片）
+    function renderRelated() {
+        var grid = $('#related-grid');
+        var dataEl = document.querySelector('.related-data');
+        if (!grid || !dataEl) return;
+        var items = [];
+        try { items = JSON.parse(dataEl.textContent); } catch (e) { return; }
+        if (!items || !items.length) {
+            var wrap = grid.closest('.related');
+            if (wrap) wrap.remove();
+            return;
+        }
+        grid.innerHTML = Cards.grid(items);
+        $$('.gcard-thumb img', grid).forEach(fadeImg);
+    }
+
     // ------------------------------------------------------- 详情页
     function bindDetailEvents() {
+        renderRelated();
         $$('.copy').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var text;

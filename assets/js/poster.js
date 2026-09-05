@@ -144,7 +144,7 @@
             var ih = imgEl ? imgEl.naturalHeight : 0;
             var imgH = (iw && ih) ? Math.min(CONTENT_W * ih / iw, 720) : 0;
 
-            var y = 40;                       // 顶部色条 10 + 间距
+            var y = PAD;                      // 顶部留白（与左右内边距对称，不加装饰条）
             if (imgH > 0) { y += imgH + 30; }
             var titleY = y; y += titleLines.length * 46 + 12;
             var metaY = 0;
@@ -158,18 +158,17 @@
             c.width = W; c.height = H;
             var ctx = c.getContext('2d');
 
-            // 背景 + 顶部色条
+            // 背景（纯白，无顶部装饰条）
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-            ctx.fillStyle = '#2563eb'; ctx.fillRect(0, 0, W, 10);
 
-            // 封面图（圆角 + cover 裁切）
+            // 封面图（圆角 + cover 裁切，顶部与左右留白对称）
             if (imgEl && imgH > 0) {
                 ctx.save();
-                roundRectPath(ctx, PAD, 40, CONTENT_W, imgH, 16);
+                roundRectPath(ctx, PAD, PAD, CONTENT_W, imgH, 16);
                 ctx.clip();
                 var scale = Math.max(CONTENT_W / iw, imgH / ih);
                 var sw = CONTENT_W / scale, sh = imgH / scale;
-                ctx.drawImage(imgEl, (iw - sw) / 2, (ih - sh) / 2, sw, sh, PAD, 40, CONTENT_W, imgH);
+                ctx.drawImage(imgEl, (iw - sw) / 2, (ih - sh) / 2, sw, sh, PAD, PAD, CONTENT_W, imgH);
                 ctx.restore();
             }
 

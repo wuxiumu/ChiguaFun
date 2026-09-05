@@ -96,6 +96,14 @@ function render_detail(string $slug, string $q, string $model): void
         'prompts'   => $sharePrompts,
     ];
     $related = related_items($cur, 16);   // 相关推荐：PC 16 个 4 列，移动端 CSS 只显示前 10
+    // 相关推荐数据内嵌 JSON，由 cards.js 客户端统一渲染（与首页卡片同款）
+    $relatedJs = array_map(static function (array $r): array {
+        return [
+            'url'   => detail_url((string)$r['slug']),
+            'title' => (string)$r['title'],
+            'cover' => $r['cover'] ? thumb_url((int)$r['id'], 1, 400) : '',
+        ];
+    }, $related);
 
     render_seo_head([
         'title' => $title . ' · ' . $model . ' 提示词',
@@ -200,21 +208,11 @@ function render_detail(string $slug, string $q, string $model): void
                 </div>
             </div>
         </div>
-        <?php if ($related): ?>
         <div class="related">
             <div class="sec-title"><span>相关推荐</span></div>
-            <div class="related-grid">
-                <?php foreach ($related as $r): ?>
-                    <a class="rcard" href="<?= h(detail_url((string)$r['slug'])) ?>">
-                        <span class="rthumb">
-                            <?php if ($r['cover']): ?><img src="<?= h(thumb_url((int)$r['id'], 1, 400)) ?>" alt="<?= h((string)$r['title']) ?>" loading="lazy"><?php else: ?><span class="ph">无图片</span><?php endif; ?>
-                        </span>
-                        <span class="rt"><?= h((string)$r['title']) ?></span>
-                    </a>
-                <?php endforeach; ?>
-            </div>
+            <div class="related-grid" id="related-grid"></div>
         </div>
-        <?php endif; ?>
+        <script type="application/json" class="related-data"><?= json_encode($relatedJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
         <a class="back" href="/">← 返回图库</a>
         <p class="kbd-hint">
             <span>点击图片全屏（多图 <span class="kbd">←</span><span class="kbd">→</span> 切换 · <span class="kbd">Esc</span> 关闭）</span>
@@ -482,7 +480,7 @@ function render_seo_head(array $info): void
         <input type="text" name="q" placeholder="搜索标题 / 提示词内容…" autocomplete="off">
         <button type="submit">搜索</button>
     </form>
-    <div class="stat-mini">已收录 <?= number_format(total_items()) ?> 条 · 图片 <?= number_format(image_file_count()) ?> 张</div>
+    <div class="stat-mini">已收录 <?= number_format(total_items()) ?> 条 </div>
     <button class="theme-toggle" id="theme-toggle" type="button" title="切换主题" aria-label="切换主题">
         <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         <svg class="sun"  viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2m0 20v-2M4 12H2m20 0h-2M5.6 5.6 4.2 4.2m15.6 15.6-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -495,6 +493,7 @@ function render_foot(): void
 {
     ?>
 <div class="toast" id="toast"></div>
+<script src="/assets/js/cards.js" defer></script>
 <script src="/assets/js/ads.js" defer></script>
 <script src="/assets/js/app.js" defer></script>
 </body></html>

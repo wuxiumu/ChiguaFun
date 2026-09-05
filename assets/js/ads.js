@@ -89,23 +89,18 @@
     // ------------------------------------------------------- 列表广告占位
     function injectListAds() {
         var ms = document.querySelector('.masonry');
-        if (!ms || !ADS || !ADS.items.length) return;
+        if (!ms || !ADS || !ADS.items.length || !window.Cards) return;
         // 清掉旧的再插，避免分页/搜索后重复
         ms.querySelectorAll('.ad-card').forEach(function (e) { e.remove(); });
-        var cards = ms.querySelectorAll('.card:not(.ad-card)');
+        var cards = ms.querySelectorAll('.gcard:not(.ad-card)');
         var k = 0;
         for (var i = 7; i < cards.length; i += 8) {
-            var it = ADS.items[k % ADS.items.length];
+            var idx = k % ADS.items.length;
+            var it = ADS.items[idx];
             k++;
-            var el = document.createElement('button');
-            el.type = 'button';
-            el.className = 'card ad-card';
-            el.innerHTML =
-                '<span class="thumb ad-thumb">' +
-                    '<span class="ad-label">' + esc(it.label || '广告') + '</span>' +
-                    '<span class="ad-tag">广告</span>' +
-                '</span>' +
-                '<span class="body"><span class="t">' + esc(it.label || '广告') + '</span></span>';
+            var tmp = document.createElement('div');
+            tmp.innerHTML = Cards.adHtml(it, idx);   // 与列表卡片同构（cards.js）
+            var el = tmp.firstChild;
             el.addEventListener('click', function (item) { return function () { openAd(item); }; }(it));
             cards[i].parentNode.insertBefore(el, cards[i].nextSibling);
         }
