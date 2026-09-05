@@ -35,16 +35,5 @@
         return (items || []).map(html).join('');
     }
 
-    // 广告占位卡片（与 .gcard 同构，虚线边框 + "广告"角标）
-    function adHtml(ad, index) {
-        return '<button type="button" class="gcard ad-card" data-ad="' + index + '">' +
-                   '<span class="gcard-thumb ad-thumb">' +
-                       '<span class="ad-label">' + esc(ad.label || '广告') + '</span>' +
-                       '<span class="ad-tag">广告</span>' +
-                   '</span>' +
-                   '<span class="gcard-t">' + esc(ad.label || '广告') + '</span>' +
-               '</button>';
-    }
-
-    window.Cards = { html: html, grid: grid, adHtml: adHtml, esc: esc };
+    window.Cards = { html: html, grid: grid, esc: esc };
 })();

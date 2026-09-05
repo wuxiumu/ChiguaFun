@@ -401,10 +401,4 @@ a:hover { text-decoration: underline; }
     position: absolute; top: 8px; right: 10px; border: 0; background: var(--chip); color: var(--text);
     width: 30px; height: 30px; border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer;
 }
-.ad-card { cursor: pointer; text-align: left; border-style: dashed; }
-.ad-thumb { position: relative; min-height: 120px; display: grid; place-items: center; background: var(--brand-soft); }
-.ad-label { color: var(--brand); font-size: 16px; font-weight: 700; padding: 0 12px; text-align: center; }
-.ad-tag {
-    position: absolute; top: 8px; right: 8px; font-size: 11px; color: var(--muted);
-    background: var(--chip); border-radius: 6px; padding: 1px 7px;
-}
+/* 列表内广告占位(.ad-card)当前不启用，样式随功能一并移除；如需恢复见 ads.js 注释 */

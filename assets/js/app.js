@@ -147,9 +147,6 @@
         // 图片淡入 & 错误兜底
         $$('.masonry img, .detail-media img', main).forEach(fadeImg);
 
-        // 列表广告占位（ads.js 提供，未加载时忽略）
-        if (window.injectListAds) window.injectListAds();
-
         // 滚动到顶
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -213,7 +210,6 @@
                 if (ms && data.items && data.items.length) {
                     ms.outerHTML = '<div class="masonry">' + data.items.map(cardHtml).join('') + '</div>';
                     $$('.masonry img').forEach(fadeImg);
-                    if (window.injectListAds) window.injectListAds();
                 }
                 // 清掉筛选/结果行与分页，回到“纯随机”视图
                 var rl = $('.result-line'); if (rl) rl.remove();

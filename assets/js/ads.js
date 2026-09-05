@@ -86,26 +86,8 @@
         else document.body.appendChild(w);
     }
 
-    // ------------------------------------------------------- 列表广告占位
-    function injectListAds() {
-        var ms = document.querySelector('.masonry');
-        if (!ms || !ADS || !ADS.items.length || !window.Cards) return;
-        // 清掉旧的再插，避免分页/搜索后重复
-        ms.querySelectorAll('.ad-card').forEach(function (e) { e.remove(); });
-        var cards = ms.querySelectorAll('.gcard:not(.ad-card)');
-        var k = 0;
-        for (var i = 7; i < cards.length; i += 8) {
-            var idx = k % ADS.items.length;
-            var it = ADS.items[idx];
-            k++;
-            var tmp = document.createElement('div');
-            tmp.innerHTML = Cards.adHtml(it, idx);   // 与列表卡片同构（cards.js）
-            var el = tmp.firstChild;
-            el.addEventListener('click', function (item) { return function () { openAd(item); }; }(it));
-            cards[i].parentNode.insertBefore(el, cards[i].nextSibling);
-        }
-    }
-    window.injectListAds = injectListAds;
+    // 列表内广告占位（.ad-card）当前不启用；仅保留全站浮标 + 弹窗。
+    // 如需恢复：在此按间隔向 .masonry 插入 Cards.adHtml(...) 并暴露 window.injectListAds。
 
     // ------------------------------------------------------- 启动
     function boot() {
@@ -115,7 +97,6 @@
                 if (!j || j.enabled !== true || !j.items || !j.items.length) return;
                 ADS = j;
                 buildFloat();
-                injectListAds();
             })
             .catch(function () { /* 广告失败不影响站点 */ });
 
