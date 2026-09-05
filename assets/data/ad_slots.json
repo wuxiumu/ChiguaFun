@@ -1,0 +1,23 @@
+{
+    "enabled": true,
+    "items": [
+        {
+            "id": "group-777",
+            "label": "扫码进群",
+            "image": "https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/uploads/img/sg777.png",
+            "alt": "扫码发送 777 进免费专属大群",
+            "link_url": "",
+            "mp_app_id": "",
+            "mp_path": ""
+        },
+        {
+            "id": "ai-chat",
+            "label": "AI 交流",
+            "image": "https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/uploads/img/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20260905194159_3_352.jpg",
+            "alt": "AI 交流",
+            "link_url": "",
+            "mp_app_id": "",
+            "mp_path": ""
+        }
+    ]
+}

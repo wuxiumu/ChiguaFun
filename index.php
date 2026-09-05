@@ -68,7 +68,7 @@ function render_detail(string $slug, string $q, string $model): void
 
     $title    = (string)$cur['title'];
     $siteUrl  = site_origin();
-    $pageUrl  = $siteUrl . '/index.php?p=' . rawurlencode($slug);
+    $pageUrl  = $siteUrl . detail_url($slug);   // 静态详情页地址（canonical/分享/二维码）
     $descr    = (string)$cur['descr'];
     if ($descr === '' && $prompts) {
         // 取首段提示词前 160 字做描述
@@ -190,8 +190,11 @@ function render_detail(string $slug, string $q, string $model): void
                     <?php endif; ?>
 
                     <div class="nav-row">
-                        <?php if ($prev): ?><a class="btn" href="<?= h('/index.php?p=' . rawurlencode($prev['slug']) . ($q || $model ? '&q=' . rawurlencode($q) . ($model ? '&model=' . rawurlencode($model) : '') : '')) ?>">← <?= h(mb_substr((string)$prev['title'], 0, 18)) ?></a><?php endif; ?>
-                        <?php if ($next): ?><a class="btn" href="<?= h('/index.php?p=' . rawurlencode($next['slug']) . ($q || $model ? '&q=' . rawurlencode($q) . ($model ? '&model=' . rawurlencode($model) : '') : '')) ?>"><?= h(mb_substr((string)$next['title'], 0, 18)) ?> →</a><?php endif; ?>
+                        <?php
+                        $ctxQ = ($q || $model) ? '?' . http_build_query(array_filter(['q' => $q, 'model' => $model])) : '';
+                        ?>
+                        <?php if ($prev): ?><a class="btn" href="<?= h(detail_url((string)$prev['slug']) . $ctxQ) ?>">← <?= h(mb_substr((string)$prev['title'], 0, 18)) ?></a><?php endif; ?>
+                        <?php if ($next): ?><a class="btn" href="<?= h(detail_url((string)$next['slug']) . $ctxQ) ?>"><?= h(mb_substr((string)$next['title'], 0, 18)) ?> →</a><?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -307,17 +310,17 @@ function render_legacy(string $q, string $model, int $page): void
                 筛选出 <b><?= number_format($total) ?></b> 条
                 <?php if ($q): ?>（关键词：<b><?= h($q) ?></b>）<?php endif; ?>
                 <?php if ($model): ?>（模型：<b><?= h($model) ?></b>）<?php endif; ?>
-                · <a href="/index.php?debug=1">清除筛选</a>
+                · <a href="/?debug=1">清除筛选</a>
             </p>
         <?php endif; ?>
 
         <?php if (!$rows): ?>
-            <div class="empty"><h3>没有匹配的内容</h3><p>换个关键词，或<a href="/index.php?debug=1">返回全部</a></p></div>
+            <div class="empty"><h3>没有匹配的内容</h3><p>换个关键词，或<a href="/?debug=1">返回全部</a></p></div>
         <?php else: ?>
             <div class="masonry">
                 <?php foreach ($rows as $r):
                     $id   = (int)$r['id'];
-                    $link = '/index.php?p=' . urlencode($r['slug']) . ($base ? '&' . http_build_query($base + ['debug' => 1]) : '&debug=1');
+                    $link = detail_url((string)$r['slug']) . '?' . http_build_query($base + ['debug' => 1]);
                     $cw   = (int)$r['cover_w'];
                     $ch   = (int)$r['cover_h'];
                 ?>
@@ -375,20 +378,6 @@ function render_legacy(string $q, string $model, int $page): void
 
 // ============================================================== 通用
 
-/** 提示词段落标签 → 简洁语言名（tab 用）。先剥掉 "1. " 前缀再精确匹配，避免 "scene" 误判成 English */
-function prompt_lang_label(string $label): string
-{
-    $t   = trim(preg_replace('/^\s*\d+\s*[\.、\)\-]?\s*/u', '', $label));
-    $low = strtolower($t);
-    if (in_array($low, ['zh', 'cn', 'chinese', 'zh-cn'], true) || strpos($t, '中文') !== false) {
-        return '中文';
-    }
-    if (in_array($low, ['en', 'eng', 'english', 'en-us'], true) || strpos($t, '英文') !== false) {
-        return 'English';
-    }
-    return $t !== '' ? $t : '提示词';
-}
-
 function render_seo_head(array $info): void
 {
     $site   = site_origin();
@@ -443,7 +432,7 @@ function render_seo_head(array $info): void
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title><?= h($title) ?></title>
 <meta name="description" content="<?= h($descr) ?>">
-<meta name="keywords" content="<?= h(implode(',', array_merge([$model, 'AI 提示词'], $tags))) ?>">
+<meta name="keywords" content="<?= h(implode(',', array_merge([$model, 'AI 提示词'], $tags, seo_keyword_list()))) ?>">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="theme-color" content="#0f1216" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">

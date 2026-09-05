@@ -34,6 +34,10 @@ function config(?string $key = null)
             'watermark_text' => 'AI 生成',
             'clarity_id'     => '',
             'la51_id'        => '',
+            // SEO TDK（Title/Description/Keywords），{count} 会被替换为收录总数
+            'seo_title'       => '51chigua 吃瓜提示词库 · {count}+ 条 AI 提示词与生成案例',
+            'seo_description' => '51chigua 吃瓜提示词库（OpenNana）收录 {count}+ 条 ChatGPT、Nano Banana、Seedance、Grok、即梦等模型的 AI 图像与视频提示词，含原图与中英文版本，可一键复制、生成分享海报。提示词吃瓜、banana我要吃瓜，每日更新。',
+            'seo_keywords'    => '51chigua,吃瓜,提示词吃瓜,nana51chigua,banana51chigua,banana我要吃瓜,51吃瓜,吃瓜网,吃瓜群众,每日吃瓜,吃瓜爆料,AI吃瓜,吃瓜提示词,nano banana 提示词,nano banana prompt,banana 提示词,AI 提示词库,提示词大全,AI 绘画提示词,AI 视频提示词,ChatGPT 提示词,提示词分享,opennana 提示词,提示词画廊,prompt gallery',
         ];
         $file = __DIR__ . '/config.php';
         $user = is_file($file) ? (array)@include $file : [];
@@ -119,6 +123,47 @@ function analytics_scripts(): string
     }
 
     return $out;
+}
+
+/**
+ * 站点级 SEO TDK（Title / Description / Keywords），来自 config。
+ * {count} 占位符替换为收录总数（传 0 则移除占位符）。
+ *
+ * @return array{title:string,desc:string,keywords:string}
+ */
+function seo_tdk(int $count = 0): array
+{
+    $rep = $count > 0 ? number_format($count) : '';
+    $t = str_replace('{count}', $rep, (string)config('seo_title'));
+    $d = str_replace('{count}', $rep, (string)config('seo_description'));
+    $k = (string)config('seo_keywords');
+    return ['title' => $t, 'desc' => $d, 'keywords' => $k];
+}
+
+/** 把 config 的 seo_keywords 拆成数组（去空），供详情页关键词合并品牌词。 */
+function seo_keyword_list(): array
+{
+    return array_values(array_filter(array_map('trim', explode(',', (string)config('seo_keywords')))));
+}
+
+/** 提示词段落标签 → 简洁语言名（tab 用）。先剥掉 "1. " 前缀再精确匹配，避免 "scene" 误判成 English */
+function prompt_lang_label(string $label): string
+{
+    $t   = trim(preg_replace('/^\s*\d+\s*[\.、\)\-]?\s*/u', '', $label));
+    $low = strtolower($t);
+    if (in_array($low, ['zh', 'cn', 'chinese', 'zh-cn'], true) || strpos($t, '中文') !== false) {
+        return '中文';
+    }
+    if (in_array($low, ['en', 'eng', 'english', 'en-us'], true) || strpos($t, '英文') !== false) {
+        return 'English';
+    }
+    return $t !== '' ? $t : '提示词';
+}
+
+/** 详情页静态地址：/p/<slug>.html（由 scripts/gen_pages.php 生成；缺失时 router 回退动态） */
+function detail_url(string $slug): string
+{
+    return '/p/' . $slug . '.html';
 }
 
 /** 极简 YAML 子集解析：标量 / 数字 / 布尔 / JSON 数组 */

@@ -79,6 +79,7 @@ Copy `config.example.php` → `config.php` (git-ignored). Every key has a sane d
 | `cdn_replace` / `cdn_base` | `''` | Rewrite image host to your own CDN/proxy |
 | `data_cdn` | `''` | URL of a `data.tar.gz` for `make data` (restore dataset without scraping) |
 | `cors_origin` | `*` | CORS for `/api/*`; set your domain to lock down, `''` to disable |
+| `seo_title` / `seo_description` / `seo_keywords` | brand defaults | Homepage TDK; `{count}` is replaced with the indexed total. Detail pages auto-generate title/description (the **prompt text** becomes the meta description) and merge these brand keywords |
 
 ### API
 
@@ -130,6 +131,7 @@ opennana/
 │   ├── scrape.py        crawler (Python stdlib; --cdn-only recommended)
 │   ├── build_index.php  data/*.md → SQLite (FTS5) index
 │   ├── gen_static.php   DB → index.html + sitemap.xml + robots.txt
+│   ├── gen_pages.php    DB → p/<slug>.html static detail pages (SEO/hreflang)
 │   ├── make_thumbs.php  pre-generate thumbnails (local mode)
 │   ├── fetch_data.php   restore data/ from data_cdn
 │   ├── watch.php        incremental daemon
@@ -138,6 +140,7 @@ opennana/
 ├── data/   (git-ignored) one .md per prompt
 ├── images/ (git-ignored) originals — local mode only
 ├── thumbs/ (git-ignored) thumbnail cache — local mode only
+├── p/      (git-ignored) static detail pages — `make pages`
 └── cache/  (git-ignored) SQLite index + memoization
 ```
 
@@ -162,6 +165,13 @@ Two gotchas: the API host is `api.opennana.com` (the main domain 404s on `/api/*
 
 - [`qrcode-generator`](https://github.com/kazuhikoarase/qrcode-generator) (MIT) — bundled at `assets/js/qrcode.js`, draws the poster/share QR codes locally (no network).
 - Everything else is hand-rolled vanilla PHP/JS/CSS — **no framework, no build step**.
+
+### Static site & SEO
+
+- `make pages` renders **every detail page as static HTML** (`p/<slug>.html`, git-ignored) — zero PHP at request time, fully crawlable, ~20k pages in ~1 min.
+- Each static page ships complete TDK (the **prompt body becomes the meta description**), self-referencing canonical, `hreflang` (zh-CN / en / x-default — one URL serves both languages via the prompt tabs), Open Graph / Twitter cards, and JSON-LD `CreativeWork`.
+- Homepage `index.html` + `sitemap.xml` / `sitemap-items.xml` / `robots.txt` come from `make static`; homepage TDK is configurable (`seo_*`, `{count}` placeholder).
+- Detail URLs are pretty + static: `/p/<slug>.html`. If a static page is missing, the router falls back to the dynamic renderer, so links never 404.
 
 ### ⚖️ Disclaimer
 
@@ -217,6 +227,8 @@ make serve           # 打开 http://127.0.0.1:8765
 | `make scrape` / `scrape-sample` | 抓全站 / 抓 20 条样本（CDN 模式） |
 | `make data` | 从 `data_cdn` 下载数据包还原 `data/` |
 | `make index` | 建/增量更新索引（自动生成静态页） |
+| `make static` | 重新生成首页 index.html + sitemap |
+| `make pages` | 生成全部静态详情页 `p/<slug>.html`（SEO/中英 hreflang/提示词进描述） |
 | `make thumbs` | 预生成缩略图（仅 local 模式） |
 | `make serve` | 启动内置服务器 |
 | `make sync` / `watch` | 一键同步 / 增量守护 |

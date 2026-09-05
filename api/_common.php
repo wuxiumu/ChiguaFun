@@ -75,6 +75,6 @@ function api_item_card(array $r): array
         'reviewed_at' => (string)$r['reviewed_at'],
         'tags'        => json_decode((string)$r['tags'], true) ?: [],
         'descr'       => (string)$r['descr'],
-        'url'         => '/index.php?p=' . rawurlencode((string)$r['slug']),
+        'url'         => detail_url((string)$r['slug']),
     ];
 }

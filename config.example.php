@@ -39,6 +39,12 @@ return [
     // 设为 '' 关闭水印。改成任意文案即可自定义，如 'AI 生成 · 仅供演示'。
     'watermark_text' => 'AI 生成',
 
+    // ---- SEO TDK（首页 Title/Description/Keywords；{count} 会替换为收录总数）----
+    // 详情页标题/描述仍按条目自动生成（利于长尾），但 keywords 会并入下面的品牌词。
+    'seo_title'       => '51chigua 吃瓜提示词库 · {count}+ 条 AI 提示词与生成案例',
+    'seo_description' => '51chigua 吃瓜提示词库（OpenNana）收录 {count}+ 条 ChatGPT、Nano Banana、Seedance、Grok、即梦等模型的 AI 图像与视频提示词，含原图与中英文版本，可一键复制、生成分享海报。提示词吃瓜、banana我要吃瓜，每日更新。',
+    'seo_keywords'    => '51chigua,吃瓜,提示词吃瓜,nana51chigua,banana51chigua,banana我要吃瓜,51吃瓜,吃瓜网,吃瓜群众,每日吃瓜,吃瓜爆料,AI吃瓜,吃瓜提示词,nano banana 提示词,nano banana prompt,banana 提示词,AI 提示词库,提示词大全,AI 绘画提示词,AI 视频提示词,ChatGPT 提示词,提示词分享,opennana 提示词,提示词画廊,prompt gallery',
+
     // 第三方统计（可选，填自己的 ID；留空则完全不加载，开源克隆者不会误报流量）：
     //   clarity_id —— Microsoft Clarity 项目 ID（https://clarity.microsoft.com 后台获取）
     //   la51_id    —— 51.la 统计 ID（https://www.51.la 后台获取，id 与 ck 相同）

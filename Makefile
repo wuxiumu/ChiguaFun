@@ -39,6 +39,9 @@ thumbs: ## 预生成缩略图（仅 local 模式需要）
 static: ## 仅重新生成静态首页 index.html + sitemap
 	$(PHP) scripts/gen_static.php
 
+pages: ## 生成全部静态详情页 p/<slug>.html（SEO/中英 hreflang/提示词进描述）
+	$(PHP) scripts/gen_pages.php
+
 serve: ## 启动内置服务器（默认 http://127.0.0.1:8765，可用 HOST/PORT 覆盖）
 	PHP_CLI_SERVER_WORKERS=8 $(PHP) -S $(HOST):$(PORT) -t . router.php
 

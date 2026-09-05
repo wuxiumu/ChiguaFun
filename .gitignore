@@ -16,7 +16,8 @@
 /api/.traffic_day
 .traffic_day
 
-# ---- 静态化生成物（由 scripts/gen_static.php 从 DB 生成）----
+# ---- 静态化生成物（由 scripts/gen_static.php / gen_pages.php 从 DB 生成）----
+/p/
 /index.html
 /index.html.tmp
 /sitemap.xml

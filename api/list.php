@@ -13,7 +13,7 @@
  *       {"id":1,"slug":"...","title":"...","model":"...","media_type":"image",
  *        "cover":"https://img.opennana.com/...jpg","cover_w":0,"cover_h":0,
  *        "reviewed_at":"2026-09-01","tags":["..."],"descr":"...",
- *        "url":"/index.php?p=slug"}
+ *        "url":"/?p=slug"}
  *     ]
  *   }
  *

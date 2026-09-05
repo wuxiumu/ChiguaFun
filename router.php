@@ -18,19 +18,31 @@ if (strpos($path, '..') !== false) {
     return true;
 }
 
-// 首页：直接 serve index.html，避免 PHP CLI Server 默认的 301 跳转
+// 首页：直接 serve index.html，避免 PHP CLI Server 默认的 301 跳转。
+// 但 /?p=slug（详情）与 /?debug=1 需交给 index.php，不能返回静态首页。
 if ($path === '/') {
-    $index = __DIR__ . '/index.html';
-    if (is_file($index)) {
-        header('Content-Type: text/html; charset=utf-8');
-        header('Cache-Control: public, max-age=60, must-revalidate');
-        header('X-Content-Type-Options: nosniff');
-        readfile($index);
-        return true;
+    $dynamic = isset($_GET['p']) || isset($_GET['debug']);
+    if (!$dynamic) {
+        $index = __DIR__ . '/index.html';
+        if (is_file($index)) {
+            header('Content-Type: text/html; charset=utf-8');
+            header('Cache-Control: public, max-age=60, must-revalidate');
+            header('X-Content-Type-Options: nosniff');
+            readfile($index);
+            return true;
+        }
     }
+    return false;   // 交回内置服务器 → 命中 index.php（详情/调试）
 }
 
 $fs = __DIR__ . $path;
+
+// 静态详情页缺失 → 回退动态详情（index.php?p=），保证 p/*.html 永不死链
+if (preg_match('#^/p/([^/]+)\.html$#', $path, $m) && !is_file($fs)) {
+    $_GET['p'] = $m[1];
+    include __DIR__ . '/index.php';
+    return true;
+}
 
 // 仅处理存在的文件；不存在交给 PHP 默认处理（返回 404）
 if (!is_file($fs)) {

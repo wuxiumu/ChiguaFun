@@ -71,9 +71,11 @@ printf("[gen_static] index.html %s bytes (%.1f KB) · sitemap.xml · %d items ·
 function gen_index(string $path, int $total, int $imgs, array $models, array $rows): void
 {
     $site   = site_origin();
-    $title  = "OpenNana 提示词库 · {$total}+ 条 AI 提示词与生成案例";
-    $desc   = "收录 {$total}+ 条 ChatGPT、Nano Banana、Seedance、Grok、即梦 等模型的 AI 图像与视频提示词，含原图与中英文版本，可一键复制。";
-    $kw     = "AI 提示词,ChatGPT 提示词,Nano Banana,Seedance,Grok,即梦,AI 图像提示词,AI 视频提示词,提示词库,AI 创作";
+    // TDK 可配置（config: seo_title / seo_description / seo_keywords，支持 {count} 占位）
+    $tdk    = seo_tdk($total);
+    $title  = $tdk['title'] !== '' ? $tdk['title'] : "OpenNana 提示词库 · {$total}+ 条 AI 提示词与生成案例";
+    $desc   = $tdk['desc']  !== '' ? $tdk['desc']  : "收录 {$total}+ 条 ChatGPT、Nano Banana、Seedance、Grok、即梦 等模型的 AI 图像与视频提示词，含原图与中英文版本，可一键复制。";
+    $kw     = $tdk['keywords'];
     $cover  = pick_cover($rows);
     $pages  = max(1, (int)ceil($total / FIRST_PAGE));
 
@@ -125,7 +127,7 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
         $itemsJson[] = [
             '@type'    => 'ListItem',
             'position' => (int)$r['id'],
-            'url'      => $site . '/index.php?p=' . rawurlencode((string)$r['slug']),
+            'url'      => $site . detail_url((string)$r['slug']),
             'name'     => (string)$r['title'],
         ];
     }
@@ -141,7 +143,7 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
                 'inLanguage'    => 'zh-CN',
                 'potentialAction' => [
                     '@type'       => 'SearchAction',
-                    'target'      => $site . '/index.php?q={search_term_string}',
+                    'target'      => $site . '/?q={search_term_string}',
                     'query-input' => 'required name=search_term_string',
                 ],
             ],
@@ -184,7 +186,7 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
     $h[] = '<div class="filters" id="filters">';
     $h[] = '<a class="chip on" href="/" data-model="">全部<span class="n">' . number_format($total) . '</span></a>';
     foreach ($models as $m => $n) {
-        $h[] = '<a class="chip" href="' . h('/index.php?model=' . rawurlencode((string)$m)) . '" data-model="' . h((string)$m) . '">'
+        $h[] = '<a class="chip" href="' . h('/?model=' . rawurlencode((string)$m)) . '" data-model="' . h((string)$m) . '">'
              . h((string)$m) . '<span class="n">' . number_format($n) . '</span></a>';
     }
     $h[] = '</div>';
@@ -240,7 +242,7 @@ function card_static(array $r): string
     $cw    = (int)$r['cover_w'];
     $ch    = (int)$r['cover_h'];
     $date  = (string)$r['reviewed_at'];
-    $url   = '/index.php?p=' . rawurlencode($slug);
+    $url   = detail_url($slug);
     $thumb = $r['cover'] ? thumb_url($id, 1, 400) : '';
     $isVid = ((string)($r['media_type'] ?: 'image')) === 'video';
 
@@ -288,7 +290,7 @@ function gen_sitemap(string $path, int $total, array $models): void
     // 不把所有分页都列在 sitemap 里；分页通过内部链接可达，避免单 sitemap 过大
     for ($i = 2; $i <= min($pages, 20); $i++) {
         $urls[] = [
-            'loc' => $site . '/index.php?page=' . $i,
+            'loc' => $site . '/?page=' . $i,
             'pri' => '0.5',
             'cf'  => 'weekly',
         ];
@@ -297,7 +299,7 @@ function gen_sitemap(string $path, int $total, array $models): void
     // 模型筛选页
     foreach ($models as $m => $_) {
         $urls[] = [
-            'loc' => $site . '/index.php?model=' . rawurlencode((string)$m),
+            'loc' => $site . '/?model=' . rawurlencode((string)$m),
             'pri' => '0.7',
             'cf'  => 'daily',
         ];
@@ -330,7 +332,7 @@ function gen_sitemap(string $path, int $total, array $models): void
     $count = 0;
     while ($r = $st->fetch(PDO::FETCH_ASSOC)) {
         $lm = $r['reviewed_at'] ? gmdate('Y-m-d', strtotime(substr((string)$r['reviewed_at'], 0, 10) ?: 'now')) : $now;
-        $url = $site . '/index.php?p=' . rawurlencode((string)$r['slug']);
+        $url = $site . detail_url((string)$r['slug']);
         fwrite($fh, "  <url>\n    <loc>" . h($url) . "</loc>\n    <lastmod>" . h($lm) . "</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n");
         $count++;
     }
@@ -350,7 +352,7 @@ Allow: /
 Disallow: /api/
 Disallow: /cache/
 Disallow: /data/
-Disallow: /index.php?debug
+Disallow: /?debug
 Sitemap: {$site}/sitemap.xml
 Sitemap: {$site}/sitemap-items.xml
 
