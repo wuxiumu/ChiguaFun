@@ -116,7 +116,8 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
 
     // 资源
     $h[] = '<link rel="stylesheet" href="/assets/css/style.css">';
-    $h[] = watermark_style();   // 注入 --wm-text（图片水印文案，可配置）
+    $h[] = watermark_style();     // 注入 --wm-text（图片水印文案，可配置）
+    $h[] = analytics_scripts();   // 第三方统计（Clarity + 51.la，ID 来自 config）
 
     // JSON-LD: WebSite + Organization + ItemList
     $itemsJson = [];

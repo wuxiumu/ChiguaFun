@@ -32,6 +32,8 @@ function config(?string $key = null)
             'data_cdn'       => '',
             'cors_origin'    => '*',
             'watermark_text' => 'AI 生成',
+            'clarity_id'     => '',
+            'la51_id'        => '',
         ];
         $file = __DIR__ . '/config.php';
         $user = is_file($file) ? (array)@include $file : [];
@@ -75,6 +77,48 @@ function watermark_style(): string
 {
     $json = json_encode((string)config('watermark_text'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return '<style>:root{--wm-text:' . $json . '}</style>';
+}
+
+/**
+ * 输出第三方统计脚本（Microsoft Clarity + 51.la）。
+ * ID 来自 config（clarity_id / la51_id）；未配置则不输出任何内容。
+ *
+ * 开源仓库考虑：ID 不写死在提交进 git 的模板里，避免克隆者部署后
+ * 其访客数据误报进作者的统计账号。各自的 config.php（不进库）填自己的 ID。
+ *
+ * 51.la 官方片段外层是 document.write("<script>…</script>")；这里直接内联其
+ * 等价的内部脚本（同样异步加载 sdk.51.la/js-sdk-pro.min.js），规避 document.write
+ * 在慢网/异步场景下被浏览器拦截的弃用问题。
+ */
+function analytics_scripts(): string
+{
+    $out = '';
+
+    $clarity = trim((string)config('clarity_id'));
+    if ($clarity !== '') {
+        $cid = json_encode($clarity, JSON_UNESCAPED_SLASHES);
+        $out .= '<script type="text/javascript">'
+              . '(function(c,l,a,r,i,t,y){'
+              . 'c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};'
+              . 't=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;'
+              . 'y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);'
+              . '})(window, document, "clarity", "script", ' . $cid . ');'
+              . '</script>';
+    }
+
+    $la = trim((string)config('la51_id'));
+    if ($la !== '') {
+        $id = json_encode($la, JSON_UNESCAPED_SLASHES);
+        $out .= '<script>!function(p){"use strict";!function(t){var s=window,e=document,i=p,'
+              . 'c="".concat("https:"===e.location.protocol?"https://":"http://","sdk.51.la/js-sdk-pro.min.js"),'
+              . 'n=e.createElement("script"),r=e.getElementsByTagName("script")[0];'
+              . 'n.type="text/javascript",n.setAttribute("charset","UTF-8"),n.async=!0,n.src=c,n.id="LA_COLLECT",i.d=n;'
+              . 'var o=function(){s.LA.ids.push(i)};'
+              . 's.LA?s.LA.ids&&o():(s.LA=p,s.LA.ids=[],o()),r.parentNode.insertBefore(n,r)}()}'
+              . '({id:' . $id . ',ck:' . $id . '});</script>';
+    }
+
+    return $out;
 }
 
 /** 极简 YAML 子集解析：标量 / 数字 / 布尔 / JSON 数组 */

@@ -225,6 +225,7 @@ function render_legacy(string $q, string $model, int $page): void
     <title>[DEBUG] OpenNana 提示词库 · 本地图库</title>
     <link rel="stylesheet" href="/assets/css/style.css">
     <?= watermark_style() ?>
+    <?= analytics_scripts() ?>
     <link rel="icon" href="data:,">
     <script>(function(){try{var t=localStorage.getItem('theme');var s=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.className=(t==='dark'||(!t&&s))?'dark':'';}catch(e){}})();</script>
     </head><body>
@@ -417,6 +418,7 @@ function render_seo_head(array $info): void
 <script>(function(){try{var t=localStorage.getItem('theme');var s=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.className=(t==='dark'||(!t&&s))?'dark':'';}catch(e){}})();</script>
 <link rel="stylesheet" href="/assets/css/style.css">
 <?= watermark_style() ?>
+<?= analytics_scripts() ?>
 <script type="application/ld+json"><?= json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
 </head>
 <body>

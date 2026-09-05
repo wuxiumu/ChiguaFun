@@ -38,4 +38,10 @@ return [
     // 图片水印文字（用 CSS 叠加在所有图片底部居中处，白色半透明）。
     // 设为 '' 关闭水印。改成任意文案即可自定义，如 'AI 生成 · 仅供演示'。
     'watermark_text' => 'AI 生成',
+
+    // 第三方统计（可选，填自己的 ID；留空则完全不加载，开源克隆者不会误报流量）：
+    //   clarity_id —— Microsoft Clarity 项目 ID（https://clarity.microsoft.com 后台获取）
+    //   la51_id    —— 51.la 统计 ID（https://www.51.la 后台获取，id 与 ck 相同）
+    'clarity_id' => '',
+    'la51_id'    => '',
 ];
