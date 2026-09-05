@@ -214,4 +214,83 @@ a:hover { text-decoration: underline; }
     background: #111827; color: #fff; padding: 9px 18px; border-radius: 9px;
     font-size: 13.5px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 99;
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------------- 提示词 中/英 tab ---------------- */
+.prompt-tabs { display: flex; gap: 4px; margin: 0 0 12px; border-bottom: 1px solid var(--border); }
+.ptab {
+    border: 0; background: transparent; padding: 8px 16px; cursor: pointer;
+    font-size: 13.5px; color: var(--muted); font-weight: 500;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color .15s, border-color .15s;
+}
+.ptab:hover { color: var(--text); }
+.ptab.on { color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
+.ppanel { display: none; }
+.ppanel.on { display: block; }
+
+/* ---------------- 详情图片：点击放大 ---------------- */
+.detail-media .dimg { cursor: zoom-in; }
+
+/* ---------------- Lightbox 全屏看图 ---------------- */
+.lb {
+    position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, .92);
+    display: none; align-items: center; justify-content: center;
+}
+.lb.on { display: flex; }
+.lb-img {
+    max-width: 92vw; max-height: 88vh; object-fit: contain;
+    border-radius: 6px; box-shadow: 0 12px 48px rgba(0, 0, 0, .6);
+    animation: lbIn .18s ease;
+}
+@keyframes lbIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+.lb-close, .lb-prev, .lb-next {
+    position: absolute; z-index: 2; width: 46px; height: 46px; border: 0; border-radius: 50%;
+    background: rgba(255, 255, 255, .14); color: #fff; font-size: 26px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background .15s;
+}
+.lb-close:hover, .lb-prev:hover, .lb-next:hover { background: rgba(255, 255, 255, .3); }
+.lb-close { top: 20px; right: 24px; font-size: 30px; }
+.lb-prev  { left: 20px;  top: 50%; margin-top: -23px; }
+.lb-next  { right: 20px; top: 50%; margin-top: -23px; }
+.lb-count {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    color: #fff; font-size: 13px; background: rgba(0, 0, 0, .55);
+    padding: 5px 14px; border-radius: 999px; letter-spacing: .5px;
+}
+@media (max-width: 640px) {
+    .lb-prev { left: 8px; } .lb-next { right: 8px; }
+    .lb-close { top: 12px; right: 14px; }
+    .lb-close, .lb-prev, .lb-next { width: 40px; height: 40px; font-size: 22px; }
+}
+.lb-fig { position: relative; display: flex; align-items: center; justify-content: center; }
+
+/* ---------------- 图片水印（文案由 config 自定义，底部居中；空则不显示） ---------------- */
+.card .thumb, .dimg-wrap, .lb-fig { position: relative; }
+.dimg-wrap { display: block; }
+.card .thumb::after,
+.dimg-wrap::after,
+.lb-fig::after {
+    content: var(--wm-text, "");
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    max-width: 92%; color: #fff; font-size: 12.5px; font-weight: 600; letter-spacing: 1px;
+    line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, .8), 0 0 2px rgba(0, 0, 0, .55);
+    opacity: .92; pointer-events: none; z-index: 3;
+}
+/* 详情大图 / lightbox 上的水印略大一些 */
+.dimg-wrap::after, .lb-fig::after { font-size: 15px; bottom: 16px; letter-spacing: 1.5px; }
+
+/* ---------------- 页脚（居中 + 流量统计） ---------------- */
+.site-foot { border-top: 1px solid var(--border); background: var(--panel); margin-top: 40px; }
+.site-foot .inner {
+    max-width: 1360px; margin: 0 auto; padding: 22px 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    text-align: center; color: var(--muted); font-size: 13px;
+}
+.site-foot .inner a { color: var(--muted); }
+.site-foot .inner a:hover { color: var(--brand); }
+.foot-stats { font-variant-numeric: tabular-nums; letter-spacing: .2px; }
+.foot-stats b { color: var(--text); font-weight: 700; }
+.foot-stats:empty { display: none; }

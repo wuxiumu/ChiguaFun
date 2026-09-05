@@ -50,12 +50,13 @@ foreach (model_counts() as $m => $n) {
 }
 
 json_out([
-    'total'    => $total,
-    'page'     => $page,
-    'per_page' => $limit,
-    'pages'    => $pages,
-    'q'        => $q,
-    'model'    => $model,
-    'models'   => $models,
-    'items'    => $items,
+    'total'     => $total,          // 当前筛选结果数
+    'total_all' => total_items(),   // 全站总数（"全部" chip 计数用，不随筛选变化）
+    'page'      => $page,
+    'per_page'  => $limit,
+    'pages'     => $pages,
+    'q'         => $q,
+    'model'     => $model,
+    'models'    => $models,         // 各模型全局计数（facet）
+    'items'     => $items,
 ]);

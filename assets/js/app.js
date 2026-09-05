@@ -92,15 +92,6 @@
             '</a>';
     }
 
-    function resultLineHtml(total, q, model) {
-        if (!q && !model) return '';
-        var parts = ['筛选出 <b>' + total + '</b> 条'];
-        if (q)   parts.push('（关键词：<b>' + escapeHtml(q) + '</b>）');
-        if (model) parts.push('（模型：<b>' + escapeHtml(model) + '</b>）');
-        parts.push('· <a href="' + window.location.pathname + '">清除筛选</a>');
-        return '<p class="result-line">' + parts.join(' ') + '</p>';
-    }
-
     function pagerHtml(page, pages, baseParams) {
         if (pages <= 1) return '';
         function link(i) {
@@ -121,16 +112,18 @@
         return html;
     }
 
-    function filterChipsHtml(models, q, cur) {
-        var html = '<div class="filters">';
-        html += '<a class="chip' + (cur === '' ? ' on' : '') +
-                '" href="' + buildUrl({ q: q || '' }) + '">全部</a>';
+    // 生成筛选 chip（必须带 data-model，否则委托点击读不到模型 → 只能切换一次）
+    // 只返回 chip 本身，不再包一层 .filters（#filters 自身已是 .filters 容器）
+    function filterChipsHtml(models, q, cur, totalAll) {
+        function n(x) { return (x || 0).toLocaleString('en-US'); }
+        var html = '<a class="chip' + (cur === '' ? ' on' : '') +
+                   '" href="' + buildUrl({ q: q || '' }) + '" data-model="">全部' +
+                   (totalAll ? '<span class="n">' + n(totalAll) + '</span>' : '') + '</a>';
         Object.keys(models).forEach(function (m) {
             html += '<a class="chip' + (cur === m ? ' on' : '') + '" href="' +
-                    buildUrl({ q: q || '', model: m }) + '">' +
-                    escapeHtml(m) + '</a>';
+                    buildUrl({ q: q || '', model: m }) + '" data-model="' + escapeHtml(m) + '">' +
+                    escapeHtml(m) + '<span class="n">' + n(models[m]) + '</span></a>';
         });
-        html += '</div>';
         return html;
     }
 
@@ -139,18 +132,14 @@
         var main = $('#main');
         if (!main) return;
 
-        // 筛选条
+        // 筛选条（chip 自带计数；不再输出"筛选出 N 条"结果行）
         var filtersEl = $('#filters');
         if (filtersEl && data.models) {
-            filtersEl.innerHTML = filterChipsHtml(data.models, params.q || '', params.model || '');
+            filtersEl.innerHTML = filterChipsHtml(data.models, params.q || '', params.model || '', data.total_all);
         }
-
-        // 结果行
+        // 兼容：清掉可能存在的旧结果行
         var rl = $('.result-line', main);
         if (rl) rl.remove();
-        if (data.q || data.model) {
-            main.insertAdjacentHTML('afterbegin', resultLineHtml(data.total, data.q, data.model));
-        }
 
         // 卡片
         var ms = $('.masonry', main);
@@ -249,6 +238,23 @@
             .then(done);
     }
 
+    // ------------------------------------------------------- 页脚流量统计
+    // 拉取 /api/tj.php（act=api 默认记一次访问 → PV/IP 自增）；Redis 不可用则静默隐藏
+    function loadTrafficStats() {
+        var el = $('#traffic-stats');
+        if (!el) return;
+        fetch('/api/tj.php?act=api', { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) {
+                if (!j || j.code !== 0 || j.redis !== 'ok' || !j.data) return;
+                var d = j.data;
+                el.innerHTML =
+                    '今日 IP <b>' + d.today_ip + '</b> · 今日 PV <b>' + d.today_pv + '</b> · ' +
+                    '总 IP <b>' + d.total_ip + '</b> · 总 PV <b>' + d.total_pv + '</b>';
+            })
+            .catch(function () { /* 忽略：统计失败不影响页面 */ });
+    }
+
     // ------------------------------------------------------- 事件
     function bindListEvents() {
         var rbtn = $('#random-btn');
@@ -318,17 +324,97 @@
         });
     }
 
+    // ------------------------------------------------------- Lightbox 全屏看图
+    var Lightbox = (function () {
+        var el = null, img = null, counter = null, prevBtn = null, nextBtn = null, urls = [], idx = 0;
+        function ensure() {
+            if (el) return;
+            el = document.createElement('div');
+            el.className = 'lb';
+            el.innerHTML =
+                '<button class="lb-close" type="button" aria-label="关闭">×</button>' +
+                '<button class="lb-prev" type="button" aria-label="上一张">‹</button>' +
+                '<span class="lb-fig"><img class="lb-img" alt=""></span>' +
+                '<button class="lb-next" type="button" aria-label="下一张">›</button>' +
+                '<div class="lb-count"></div>';
+            document.body.appendChild(el);
+            img      = el.querySelector('.lb-img');
+            counter  = el.querySelector('.lb-count');
+            prevBtn  = el.querySelector('.lb-prev');
+            nextBtn  = el.querySelector('.lb-next');
+            el.querySelector('.lb-close').addEventListener('click', close);
+            prevBtn.addEventListener('click', function (e) { e.stopPropagation(); step(-1); });
+            nextBtn.addEventListener('click', function (e) { e.stopPropagation(); step(1); });
+            el.addEventListener('click', function (e) { if (e.target === el) close(); }); // 点背景关闭
+            img.addEventListener('click', function (e) { e.stopPropagation(); });
+        }
+        function render() {
+            img.src = urls[idx] || '';
+            var multi = urls.length > 1;
+            counter.textContent = (idx + 1) + ' / ' + urls.length;
+            counter.style.display = multi ? '' : 'none';
+            prevBtn.style.display = multi ? '' : 'none';
+            nextBtn.style.display = multi ? '' : 'none';
+        }
+        function open(list, i) {
+            ensure();
+            urls = (list || []).slice();
+            if (!urls.length) return;
+            idx = Math.max(0, Math.min(i || 0, urls.length - 1));
+            render();
+            el.classList.add('on');
+            document.body.style.overflow = 'hidden';   // 锁背景滚动
+        }
+        function close() {
+            if (!el) return;
+            el.classList.remove('on');
+            document.body.style.overflow = '';
+            img.removeAttribute('src');
+        }
+        function step(d) {
+            if (urls.length < 2) return;
+            idx = (idx + d + urls.length) % urls.length;
+            render();
+        }
+        function isOpen() { return !!(el && el.classList.contains('on')); }
+        return { open: open, close: close, step: step, isOpen: isOpen };
+    })();
+
+    // 详情图片：点击打开 lightbox；收集 data-full 原图地址，多图可左右切换
+    function bindLightbox() {
+        var imgs = $$('.detail-media .dimg');
+        if (!imgs.length) return;
+        var urls = imgs.map(function (im) { return im.getAttribute('data-full') || im.currentSrc || im.src; });
+        imgs.forEach(function (im, i) {
+            im.addEventListener('click', function () { Lightbox.open(urls, i); });
+        });
+    }
+
+    // ------------------------------------------------------- 提示词 中/英 tab
+    function bindPromptTabs() {
+        var tabs = $$('.prompt-tabs .ptab');
+        if (!tabs.length) return;
+        tabs.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var target = btn.getAttribute('data-tab');
+                tabs.forEach(function (b) { b.classList.toggle('on', b === btn); });
+                $$('.ppanel').forEach(function (p) { p.classList.toggle('on', p.id === 'panel-' + target); });
+            });
+        });
+    }
+
     // ------------------------------------------------------- 详情页
     function bindDetailEvents() {
         $$('.copy').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var text;
                 if (btn.dataset.all) {
-                    text = $$('.prompt-block pre').map(function (el) { return el.innerText; })
+                    // 用 textContent：tab 隐藏面板是 display:none，innerText 会返回空串
+                    text = $$('.prompt-block pre').map(function (el) { return el.textContent; })
                         .join('\n\n---\n\n');
                 } else {
                     var el = btn.dataset.target ? document.getElementById(btn.dataset.target) : null;
-                    text = el ? el.innerText : '';
+                    text = el ? el.textContent : '';
                 }
                 function ok() {
                     var old = btn.textContent;
@@ -350,6 +436,13 @@
 
         // 键盘快捷键
         document.addEventListener('keydown', function (e) {
+            // lightbox 打开时优先：←→ 切图、Esc 关闭，并拦截其余按键（不触发翻条目/返回）
+            if (Lightbox.isOpen()) {
+                if (e.key === 'Escape')     { Lightbox.close(); e.preventDefault(); return; }
+                if (e.key === 'ArrowLeft')  { Lightbox.step(-1); e.preventDefault(); return; }
+                if (e.key === 'ArrowRight') { Lightbox.step(1);  e.preventDefault(); return; }
+                return;
+            }
             var el = document.activeElement;
             var inForm = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
             if (inForm) {
@@ -365,7 +458,11 @@
                 return;
             }
             if (e.key.toLowerCase() === 'c') {
-                var btn = $('.copy:not(.copy-all)') || $('.copy');
+                // 复制当前激活 tab 的提示词（无 tab 时复制首段）
+                var active = $('.ppanel.on pre');
+                var btn = active
+                    ? $('.copy[data-target="' + active.id + '"]')
+                    : ($('.copy:not(.copy-all)') || $('.copy'));
                 if (btn) { btn.click(); e.preventDefault(); }
                 return;
             }
@@ -375,6 +472,8 @@
         });
 
         $$('.detail-media img').forEach(fadeImg);
+        bindLightbox();
+        bindPromptTabs();
     }
 
     // ------------------------------------------------------- 主题切换
@@ -393,6 +492,7 @@
         applyThemeEarly();
         if ($('#main') && $('.masonry')) {
             bindListEvents();
+            loadTrafficStats();
             // 如果 URL 带有非首页参数，立即加载对应数据
             var ps = new URLSearchParams(window.location.search);
             var q = ps.get('q') || '';

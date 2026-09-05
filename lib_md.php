@@ -25,12 +25,13 @@ function config(?string $key = null)
     static $cfg = null;
     if ($cfg === null) {
         $defaults = [
-            'site_origin' => '',
-            'image_mode'  => 'cdn',
-            'cdn_base'    => '',
-            'cdn_replace' => '',
-            'data_cdn'    => '',
-            'cors_origin' => '*',
+            'site_origin'    => '',
+            'image_mode'     => 'cdn',
+            'cdn_base'       => '',
+            'cdn_replace'    => '',
+            'data_cdn'       => '',
+            'cors_origin'    => '*',
+            'watermark_text' => 'AI 生成',
         ];
         $file = __DIR__ . '/config.php';
         $user = is_file($file) ? (array)@include $file : [];
@@ -63,6 +64,17 @@ function abs_url(string $u): string
         return $u;
     }
     return site_origin() . '/' . ltrim($u, '/');
+}
+
+/**
+ * 输出水印 CSS 变量的 <style>，注入到各页 <head>。
+ * CSS 里 .wm 容器 ::after 用 content: var(--wm-text) 叠加白色水印。
+ * watermark_text 为空时注入空串 → content:"" → 水印不可见（即关闭）。
+ */
+function watermark_style(): string
+{
+    $json = json_encode((string)config('watermark_text'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    return '<style>:root{--wm-text:' . $json . '}</style>';
 }
 
 /** 极简 YAML 子集解析：标量 / 数字 / 布尔 / JSON 数组 */

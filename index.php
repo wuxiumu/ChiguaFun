@@ -97,12 +97,13 @@ function render_detail(string $slug, string $q, string $model): void
                 <div class="detail-media">
                     <?php if ($images): ?>
                         <?php foreach ($images as $i => $im):
-                            $u  = h(img_url((string)$im));
-                            $tw = thumb_url((int)$cur['id'], $i + 1, 1200);
+                            $u  = img_url((string)$im);                      // 原图（cdn 模式为 CDN 原图，local 为本地路径）
+                            $tw = thumb_url((int)$cur['id'], $i + 1, 1200);   // 展示用
                         ?>
-                        <a class="lightbox" href="<?= $u ?>" target="_blank" rel="noopener">
-                            <img src="<?= h($tw) ?>" alt="<?= h($title) ?>" loading="<?= $i === 0 ? 'eager' : 'lazy' ?>">
-                        </a>
+                        <span class="dimg-wrap">
+                            <img class="dimg" src="<?= h($tw) ?>" data-full="<?= h($u) ?>"
+                                 alt="<?= h($title) ?>" loading="<?= $i === 0 ? 'eager' : 'lazy' ?>">
+                        </span>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <div class="nopic">暂无图片</div>
@@ -140,15 +141,22 @@ function render_detail(string $slug, string $q, string $model): void
 
                     <?php if ($prompts): ?>
                         <div class="sec-title">
-                            <span>提示词 <span class="muted">共 <?= count($prompts) ?> 段</span></span>
+                            <span>提示词</span>
                             <?php if (count($prompts) > 1): ?>
                                 <button class="copy copy-all" data-all="1">一键复制全部</button>
                             <?php endif; ?>
                         </div>
-                        <?php foreach ($prompts as $p): ?>
-                            <div class="prompt-block">
+                        <?php if (count($prompts) > 1): ?>
+                            <div class="prompt-tabs" role="tablist">
+                                <?php foreach ($prompts as $i => $p): ?>
+                                    <button type="button" class="ptab<?= $i === 0 ? ' on' : '' ?>"
+                                            data-tab="pt<?= (int)$p['seq'] ?>" role="tab"><?= h(prompt_lang_label((string)$p['label'])) ?></button>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php foreach ($prompts as $i => $p): ?>
+                            <div class="prompt-block ppanel<?= $i === 0 ? ' on' : '' ?>" id="panel-pt<?= (int)$p['seq'] ?>">
                                 <div class="prompt-head">
-                                    <span class="lbl"><?= h($p['label']) ?></span>
                                     <span class="ops">
                                         <span class="tag"><?= number_format((int)$p['chars']) ?> 字</span>
                                         <button class="copy" data-target="pt<?= (int)$p['seq'] ?>">复制</button>
@@ -170,8 +178,9 @@ function render_detail(string $slug, string $q, string $model): void
         </div>
         <a class="back" href="/">← 返回图库</a>
         <p class="kbd-hint">
-            快捷键：<span><span class="kbd">←</span><span class="kbd">→</span> 上下条</span>
-            <span><span class="kbd">C</span> 复制首段</span>
+            <span>点击图片全屏（多图 <span class="kbd">←</span><span class="kbd">→</span> 切换 · <span class="kbd">Esc</span> 关闭）</span>
+            <span><span class="kbd">←</span><span class="kbd">→</span> 上下条</span>
+            <span><span class="kbd">C</span> 复制当前提示词</span>
             <span><span class="kbd">Esc</span> 返回列表</span>
         </p>
     </div>
@@ -215,6 +224,7 @@ function render_legacy(string $q, string $model, int $page): void
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>[DEBUG] OpenNana 提示词库 · 本地图库</title>
     <link rel="stylesheet" href="/assets/css/style.css">
+    <?= watermark_style() ?>
     <link rel="icon" href="data:,">
     <script>(function(){try{var t=localStorage.getItem('theme');var s=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.className=(t==='dark'||(!t&&s))?'dark':'';}catch(e){}})();</script>
     </head><body>
@@ -314,6 +324,21 @@ function render_legacy(string $q, string $model, int $page): void
 }
 
 // ============================================================== 通用
+
+/** 提示词段落标签 → 简洁语言名（tab 用）。先剥掉 "1. " 前缀再精确匹配，避免 "scene" 误判成 English */
+function prompt_lang_label(string $label): string
+{
+    $t   = trim(preg_replace('/^\s*\d+\s*[\.、\)\-]?\s*/u', '', $label));
+    $low = strtolower($t);
+    if (in_array($low, ['zh', 'cn', 'chinese', 'zh-cn'], true) || strpos($t, '中文') !== false) {
+        return '中文';
+    }
+    if (in_array($low, ['en', 'eng', 'english', 'en-us'], true) || strpos($t, '英文') !== false) {
+        return 'English';
+    }
+    return $t !== '' ? $t : '提示词';
+}
+
 function render_seo_head(array $info): void
 {
     $site   = site_origin();
@@ -391,6 +416,7 @@ function render_seo_head(array $info): void
 
 <script>(function(){try{var t=localStorage.getItem('theme');var s=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.className=(t==='dark'||(!t&&s))?'dark':'';}catch(e){}})();</script>
 <link rel="stylesheet" href="/assets/css/style.css">
+<?= watermark_style() ?>
 <script type="application/ld+json"><?= json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
 </head>
 <body>

@@ -116,6 +116,7 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
 
     // 资源
     $h[] = '<link rel="stylesheet" href="/assets/css/style.css">';
+    $h[] = watermark_style();   // 注入 --wm-text（图片水印文案，可配置）
 
     // JSON-LD: WebSite + Organization + ItemList
     $itemsJson = [];
@@ -214,13 +215,12 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
     $h[] = '</div>'; // #main
     $h[] = '</div>'; // .wrap
 
-    // footer
+    // footer（文案居中；流量统计由 app.js 拉取 /api/tj.php 填充，Redis 不可用则留空隐藏）
     $h[] = '<footer class="site-foot"><div class="inner">';
-    $h[] = '<span>共 ' . number_format($total) . ' 条 · ' . number_format($imgs) . ' 张原图</span>';
-    $h[] = '<span class="muted">·</span>';
-    $h[] = '<a href="/sitemap.xml">sitemap</a>';
-    $h[] = '<span class="muted">·</span>';
-    $h[] = '<a href="/index.php?debug=1">debug</a>';
+    $h[] = '<span class="foot-stats" id="traffic-stats"></span>';
+    $h[] = '<span class="foot-line">共 ' . number_format($total) . ' 条 · ' . number_format($imgs) . ' 张图 · '
+         . '<a href="/sitemap.xml">sitemap</a> · <a href="/index.php?debug=1">debug</a> · '
+         . '<a href="https://github.com/wuxiumu/ChiguaFun" target="_blank" rel="noopener">OpenNana 提示词库</a></span>';
     $h[] = '</div></footer>';
 
     $h[] = '<div class="toast" id="toast"></div>';
