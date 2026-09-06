@@ -1,5 +1,5 @@
 /**
- * OpenNana 提示词库 - 前端应用逻辑
+ * 🍉 ChiguaNana 提示词库 - 前端应用逻辑
  *
  * 设计原则：
  *   - 不依赖任何三方库；用 vanilla JS + fetch
@@ -97,6 +97,127 @@
         return html;
     }
 
+    function isMobile() {
+        return window.matchMedia('(max-width: 900px)').matches;
+    }
+
+    // ------------------------------------------------------- 列表：分页 / 无限下拉（移动端可切换）
+    var LIST_MODE_KEY = 'opennana_list_mode';
+    var listState = {
+        mode: 'pager',
+        page: 1,
+        pages: 1,
+        params: { q: '', model: '' },
+        loading: false,
+        observer: null
+    };
+
+    function getListMode() {
+        try {
+            var v = localStorage.getItem(LIST_MODE_KEY);
+            if (v === 'pager' || v === 'infinite') return v;
+        } catch (e) { /* ignore */ }
+        return 'pager';
+    }
+
+    function setListMode(mode) {
+        listState.mode = mode;
+        try { localStorage.setItem(LIST_MODE_KEY, mode); } catch (e) { /* ignore */ }
+        syncModeTabs();
+        updateListChrome();
+        bindListSentinel();
+    }
+
+    function ensureModeTabs() {
+        var main = $('#main');
+        if (!main || $('#view-mode-tabs')) return;
+        var bar = document.createElement('div');
+        bar.id = 'view-mode-tabs';
+        bar.className = 'view-mode-tabs';
+        bar.setAttribute('role', 'tablist');
+        bar.innerHTML =
+            '<button type="button" class="vtab" data-mode="pager" role="tab">分页</button>' +
+            '<button type="button" class="vtab" data-mode="infinite" role="tab">下拉加载</button>';
+        var ms = $('.masonry', main) || $('.empty', main);
+        if (ms) main.insertBefore(bar, ms);
+        else main.appendChild(bar);
+        bar.addEventListener('click', function (e) {
+            var btn = e.target.closest && e.target.closest('.vtab');
+            if (!btn) return;
+            var mode = btn.getAttribute('data-mode');
+            if (!mode || mode === listState.mode) return;
+            setListMode(mode);
+            // 切到无限：从当前筛选第 1 页重载并开始追加；切到分页：重载当前页
+            loadList({
+                q: listState.params.q,
+                model: listState.params.model,
+                page: mode === 'infinite' ? 1 : listState.page
+            }, true);
+        });
+        syncModeTabs();
+    }
+
+    function syncModeTabs() {
+        $$('#view-mode-tabs .vtab').forEach(function (b) {
+            b.classList.toggle('on', b.getAttribute('data-mode') === listState.mode);
+        });
+    }
+
+    function ensureListSentinel() {
+        var main = $('#main');
+        if (!main) return null;
+        var el = $('#list-sentinel');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'list-sentinel';
+            el.className = 'load-sentinel';
+            el.innerHTML = '<span class="load-tip">加载中…</span>';
+            main.appendChild(el);
+        }
+        return el;
+    }
+
+    function updateListChrome() {
+        var pager = $('.pager', $('#main'));
+        var sent = $('#list-sentinel');
+        if (listState.mode === 'infinite') {
+            if (pager) pager.style.display = 'none';
+            if (sent) {
+                sent.style.display = listState.page < listState.pages ? '' : 'none';
+                sent.classList.toggle('done', listState.page >= listState.pages);
+                if (listState.page >= listState.pages) {
+                    sent.innerHTML = '<span class="load-tip">已经到底啦</span>';
+                } else {
+                    sent.innerHTML = '<span class="load-tip">上拉加载更多</span>';
+                }
+            }
+        } else {
+            if (pager) pager.style.display = '';
+            if (sent) sent.style.display = 'none';
+        }
+    }
+
+    function bindListSentinel() {
+        if (listState.observer) {
+            listState.observer.disconnect();
+            listState.observer = null;
+        }
+        if (listState.mode !== 'infinite') return;
+        var el = ensureListSentinel();
+        if (!el || !('IntersectionObserver' in window)) return;
+        listState.observer = new IntersectionObserver(function (entries) {
+            if (!entries[0] || !entries[0].isIntersecting) return;
+            if (listState.loading || listState.page >= listState.pages) return;
+            loadList({
+                q: listState.params.q,
+                model: listState.params.model,
+                page: listState.page + 1,
+                append: true
+            }, false);
+        }, { rootMargin: '240px 0px' });
+        listState.observer.observe(el);
+    }
+
     // 生成筛选 chip（必须带 data-model，否则委托点击读不到模型 → 只能切换一次）
     // 只返回 chip 本身，不再包一层 .filters（#filters 自身已是 .filters 容器）
     function filterChipsHtml(models, q, cur, totalAll) {
@@ -113,42 +234,56 @@
     }
 
     // ------------------------------------------------------- 列表加载
-    function renderList(data, params) {
+    function renderList(data, params, append) {
         var main = $('#main');
         if (!main) return;
 
-        // 筛选条（chip 自带计数；不再输出"筛选出 N 条"结果行）
+        listState.page = data.page || 1;
+        listState.pages = data.pages || 1;
+        listState.params = { q: params.q || '', model: params.model || '' };
+
         var filtersEl = $('#filters');
         if (filtersEl && data.models) {
             filtersEl.innerHTML = filterChipsHtml(data.models, params.q || '', params.model || '', data.total_all);
         }
-        // 兼容：清掉可能存在的旧结果行
         var rl = $('.result-line', main);
         if (rl) rl.remove();
 
-        // 卡片
+        ensureModeTabs();
+
         var ms = $('.masonry', main);
-        if (!ms) return;
-        if (!data.items.length) {
-            ms.outerHTML = '<div class="empty"><h3>没有匹配的内容</h3>' +
-                '<p>换个关键词，或<a href="' + window.location.pathname + '">返回全部</a></p></div>';
+        if (!data.items.length && !append) {
+            if (ms) {
+                ms.outerHTML = '<div class="empty"><h3>没有匹配的内容</h3>' +
+                    '<p>换个关键词，或<a href="' + window.location.pathname + '">返回全部</a></p></div>';
+            }
+            var oldNav0 = $('.pager', main);
+            if (oldNav0) oldNav0.remove();
+            updateListChrome();
             return;
         }
-        ms.outerHTML = '<div class="masonry">' + data.items.map(cardHtml).join('') + '</div>';
 
-        // 分页
+        if (append && ms) {
+            ms.insertAdjacentHTML('beforeend', data.items.map(cardHtml).join(''));
+            $$('.masonry img', ms).forEach(fadeImg);
+        } else {
+            if (!ms) return;
+            ms.outerHTML = '<div class="masonry">' + data.items.map(cardHtml).join('') + '</div>';
+            $$('.masonry img', main).forEach(fadeImg);
+            if (listState.mode === 'pager') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
         var oldNav = $('.pager', main);
         if (oldNav) oldNav.remove();
         if (data.pages > 1) {
             var baseParams = { q: data.q || '', model: data.model || '' };
             main.insertAdjacentHTML('beforeend', pagerHtml(data.page, data.pages, baseParams));
         }
-
-        // 图片淡入 & 错误兜底
-        $$('.masonry img, .detail-media img', main).forEach(fadeImg);
-
-        // 滚动到顶
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        ensureListSentinel();
+        updateListChrome();
+        bindListSentinel();
     }
 
     function fadeImg(img) {
@@ -165,10 +300,15 @@
         }, { once: true });
     }
 
-    var loading = false;
     function loadList(params, pushState) {
-        if (loading) return;
-        loading = true;
+        if (listState.loading) return;
+        listState.loading = true;
+        var append = !!params.append && listState.mode === 'infinite';
+        var sent = $('#list-sentinel');
+        if (sent && append) {
+            sent.innerHTML = '<span class="load-tip">加载中…</span>';
+            sent.classList.add('busy');
+        }
         var url = '/api/list.php?' +
             new URLSearchParams({
                 page: params.page || 1,
@@ -179,10 +319,10 @@
         fetch(url, { headers: { 'Accept': 'application/json' } })
             .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
             .then(function (data) {
-                renderList(data, params);
+                renderList(data, params, append);
                 if (pushState) {
                     var u = buildUrl({
-                        page: data.page > 1 ? data.page : '',
+                        page: (listState.mode === 'pager' && data.page > 1) ? data.page : '',
                         model: params.model || '',
                         q: params.q || ''
                     });
@@ -190,12 +330,16 @@
                 }
                 document.title = (data.q ? '搜索 “' + data.q + '” · ' : '') +
                     (data.model ? data.model + ' · ' : '') +
-                    'OpenNana 提示词库';
+                    '🍉 ChiguaNana 提示词库';
             })
             .catch(function (e) {
                 showToast('加载失败：' + e.message);
             })
-            .then(function () { loading = false; });
+            .then(function () {
+                listState.loading = false;
+                if (sent) sent.classList.remove('busy');
+                updateListChrome();
+            });
     }
 
     // ------------------------------------------------------- 随机（手气不错）
@@ -211,12 +355,22 @@
                     ms.outerHTML = '<div class="masonry">' + data.items.map(cardHtml).join('') + '</div>';
                     $$('.masonry img').forEach(fadeImg);
                 }
-                // 清掉筛选/结果行与分页，回到“纯随机”视图
                 var rl = $('.result-line'); if (rl) rl.remove();
                 var pg = $('.pager'); if (pg) pg.remove();
                 $$('.filters .chip').forEach(function (c) { c.classList.remove('on'); });
                 var all = $('.filters .chip[data-model=""]'); if (all) all.classList.add('on');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                listState.page = 1;
+                listState.pages = 1;
+                listState.params = { q: '', model: '' };
+                ensureListSentinel();
+                updateListChrome();
+                // 滚到第一条，方便立刻看到结果
+                var first = $('.masonry .gcard') || $('.masonry');
+                if (first && first.scrollIntoView) {
+                    first.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
                 showToast('已随机抽取 ' + (data.count || data.items.length) + ' 条');
             })
             .catch(function (e) { showToast('随机失败：' + e.message); })
@@ -388,20 +542,123 @@
         });
     }
 
-    // 相关推荐：服务端内嵌 .related-data JSON，客户端用 cards.js 统一渲染（与首页同款卡片）
+    // 相关推荐
+    // PC：服务端同模型优先的固定列表
+    // 移动端：随机无限下拉（/api/random.php?exclude=…）
+    var relState = { seen: {}, loading: false, done: false, observer: null, exclude: 0 };
+
     function renderRelated() {
         var grid = $('#related-grid');
+        var wrap = grid && grid.closest('.related');
         var dataEl = document.querySelector('.related-data');
-        if (!grid || !dataEl) return;
+        if (!grid) return;
+
         var items = [];
-        try { items = JSON.parse(dataEl.textContent); } catch (e) { return; }
+        if (dataEl) {
+            try { items = JSON.parse(dataEl.textContent); } catch (e) { items = []; }
+        }
+
+        relState.exclude = parseInt((wrap && wrap.getAttribute('data-exclude-id')) || '0', 10) || 0;
+        relState.seen = {};
+        if (relState.exclude) relState.seen[relState.exclude] = 1;
+        relState.done = false;
+        relState.loading = false;
+
+        if (isMobile()) {
+            // 移动端：清空后随机无限加载
+            grid.innerHTML = '';
+            ensureRelatedSentinel();
+            var tip = $('.related .sec-title span');
+            if (tip) tip.textContent = '随便看看';
+            bindRelatedSentinel();
+            loadRelatedMore();
+            return;
+        }
+
+        // PC：保留同模型相关
         if (!items || !items.length) {
-            var wrap = grid.closest('.related');
             if (wrap) wrap.remove();
             return;
         }
+        items.forEach(function (it) {
+            if (it.id) relState.seen[it.id] = 1;
+        });
         grid.innerHTML = Cards.grid(items);
         $$('.gcard-thumb img', grid).forEach(fadeImg);
+        var sent = $('#related-sentinel');
+        if (sent) sent.style.display = 'none';
+    }
+
+    function ensureRelatedSentinel() {
+        var wrap = document.querySelector('.related');
+        if (!wrap) return null;
+        var el = $('#related-sentinel');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'related-sentinel';
+            el.className = 'load-sentinel';
+            wrap.appendChild(el);
+        }
+        el.style.display = '';
+        el.classList.remove('done');
+        el.innerHTML = '<span class="load-tip">上拉加载更多</span>';
+        return el;
+    }
+
+    function bindRelatedSentinel() {
+        if (relState.observer) {
+            relState.observer.disconnect();
+            relState.observer = null;
+        }
+        var el = ensureRelatedSentinel();
+        if (!el || !('IntersectionObserver' in window)) return;
+        relState.observer = new IntersectionObserver(function (entries) {
+            if (!entries[0] || !entries[0].isIntersecting) return;
+            loadRelatedMore();
+        }, { rootMargin: '320px 0px' });
+        relState.observer.observe(el);
+    }
+
+    function loadRelatedMore() {
+        if (relState.loading || relState.done) return;
+        var grid = $('#related-grid');
+        if (!grid) return;
+        relState.loading = true;
+        var sent = $('#related-sentinel');
+        if (sent) {
+            sent.classList.add('busy');
+            sent.innerHTML = '<span class="load-tip">加载中…</span>';
+        }
+        var ids = Object.keys(relState.seen);
+        if (ids.length > 100) ids = ids.slice(-100); // 避免 exclude 过长
+        var url = '/api/random.php?n=12' + (ids.length ? '&exclude=' + ids.join(',') : '');
+        fetch(url, { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+            .then(function (data) {
+                var batch = (data.items || []).filter(function (it) {
+                    if (!it.id || relState.seen[it.id]) return false;
+                    relState.seen[it.id] = 1;
+                    return true;
+                });
+                if (!batch.length) {
+                    relState.done = true;
+                    if (sent) {
+                        sent.classList.add('done');
+                        sent.innerHTML = '<span class="load-tip">已经到底啦</span>';
+                    }
+                    return;
+                }
+                grid.insertAdjacentHTML('beforeend', Cards.grid(batch));
+                $$('.gcard-thumb img', grid).forEach(fadeImg);
+                if (sent) sent.innerHTML = '<span class="load-tip">上拉加载更多</span>';
+            })
+            .catch(function () {
+                if (sent) sent.innerHTML = '<span class="load-tip">加载失败，上拉重试</span>';
+            })
+            .then(function () {
+                relState.loading = false;
+                if (sent) sent.classList.remove('busy');
+            });
     }
 
     // ------------------------------------------------------- 详情页
@@ -489,12 +746,27 @@
         });
     }
 
+    // ------------------------------------------------------- 页脚脚本（未在 HTML 声明时动态加载，兼容旧静态页）
+    function ensureFooterScript() {
+        if (document.querySelector('script[src*="/assets/js/footer.js"]')) return;
+        var s = document.createElement('script');
+        s.src = '/assets/js/footer.js';
+        s.defer = true;
+        (document.body || document.documentElement).appendChild(s);
+    }
+
     // ------------------------------------------------------- 启动
     function boot() {
         applyThemeEarly();
+        ensureFooterScript();
+        loadTrafficStats();
+        listState.mode = getListMode();
         if ($('#main') && $('.masonry')) {
+            ensureModeTabs();
+            ensureListSentinel();
+            updateListChrome();
+            bindListSentinel();
             bindListEvents();
-            loadTrafficStats();
             // 如果 URL 带有非首页参数，立即加载对应数据
             var ps = new URLSearchParams(window.location.search);
             var q = ps.get('q') || '';
@@ -502,6 +774,18 @@
             var page = parseInt(ps.get('page') || '1', 10);
             if (q || model || page > 1) {
                 loadList({ q: q, model: model, page: page }, false);
+            } else if (listState.mode === 'infinite') {
+                // 首屏已有静态卡片：登记为第 1 页，后续滚动追加
+                listState.page = 1;
+                // pages 未知时先拉一次元信息（不替换首屏）
+                fetch('/api/list.php?page=1&limit=1', { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (data) {
+                        if (!data) return;
+                        listState.pages = data.pages || 1;
+                        updateListChrome();
+                    })
+                    .catch(function () { /* ignore */ });
             }
         } else if ($('.detail')) {
             bindDetailEvents();

@@ -1,6 +1,6 @@
 <?php
 /**
- * OpenNana 提示词库 - PHP 入口（兼容模式）
+ * 🍉 ChiguaNana 提示词库 - PHP 入口（兼容模式）
  *
  * 行为：
  *   - 详情页：?p=<slug>            渲染（带 SEO meta + JSON-LD）
@@ -29,9 +29,102 @@ if ($debug) {
     return;
 }
 
-// 其他列表/搜索/筛选形态都交给静态首页 + JS 处理
+// 本地开发默认动态首页（方便预览）；生产仍 301 到静态 index.html
+if (is_local_dev()) {
+    render_dynamic_home($q, $model, $page);
+    return;
+}
+
 header('Location: /index.html', true, 301);
 exit;
+
+// ============================================================== 本地动态首页
+function render_dynamic_home(string $q, string $model, int $page): void
+{
+    if (!db_exists()) {
+        render_empty_index();
+        return;
+    }
+
+    header('Content-Type: text/html; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: no-store');
+
+    $total  = count_items($q, $model);
+    $pages  = max(1, (int)ceil($total / PER_PAGE));
+    $page   = min(max(1, $page), $pages);
+    $rows   = query_items($q, $model, PER_PAGE, ($page - 1) * PER_PAGE);
+    $models = model_counts();
+    $all    = total_items();
+    $tdk    = seo_tdk($all);
+    $title  = $tdk['title'] !== '' ? $tdk['title'] : site_brand() . " · {$all}+ 条";
+    ?>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title><?= h($title) ?> · 动态预览</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="/assets/css/style.css">
+<?= watermark_style() ?>
+<script>(function(){try{var t=localStorage.getItem("theme");var s=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.className=(t==="dark"||(!t&&s))?"dark":"";}catch(e){}})();</script>
+</head>
+<body>
+<header class="site-head"><div class="inner">
+<a class="logo" href="/"><?= site_logo_html() ?></a>
+<form class="search-bar" method="get" action="/">
+<input type="text" name="q" value="<?= h($q) ?>" placeholder="搜索标题 / 提示词内容…" autocomplete="off">
+<button type="submit">搜索</button>
+</form>
+<button type="button" class="btn random-btn" id="random-btn" title="随机看一批提示词">🎲 手气不错</button>
+<div class="stat-mini">已收录 <?= number_format($all) ?> 条 · 动态</div>
+<button class="theme-toggle" id="theme-toggle" type="button" title="切换主题" aria-label="切换主题">
+<svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+<svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2m0 20v-2M4 12H2m20 0h-2M5.6 5.6 4.2 4.2m15.6 15.6-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+</button>
+</div></header>
+<div class="wrap">
+<div class="filters" id="filters">
+<a class="chip <?= $model === '' ? 'on' : '' ?>" href="/" data-model="">全部<span class="n"><?= number_format($all) ?></span></a>
+<?php foreach ($models as $m => $n): ?>
+<a class="chip <?= $model === (string)$m ? 'on' : '' ?>" href="/?model=<?= h(rawurlencode((string)$m)) ?>" data-model="<?= h((string)$m) ?>"><?= h((string)$m) ?><span class="n"><?= number_format($n) ?></span></a>
+<?php endforeach; ?>
+</div>
+<div id="main">
+<?php if ($q !== '' || $model !== ''): ?>
+<p class="result-line">筛选出 <b><?= number_format($total) ?></b> 条<?php if ($q !== ''): ?>（关键词：<b><?= h($q) ?></b>）<?php endif; ?><?php if ($model !== ''): ?>（模型：<b><?= h($model) ?></b>）<?php endif; ?> · <a href="/">清除筛选</a></p>
+<?php endif; ?>
+<?php if (!$rows): ?>
+<div class="empty"><h3>没有匹配的内容</h3><p><a href="/">返回全部</a></p></div>
+<?php else: ?>
+<div class="masonry">
+<?php foreach ($rows as $r) {
+    echo card_html($r);
+} ?>
+</div>
+<?php if ($pages > 1): ?>
+<nav class="pager">
+<?php if ($page > 1): ?><a href="/?<?= h(http_build_query(array_filter(['q' => $q, 'model' => $model, 'page' => $page - 1]))) ?>" data-page="<?= $page - 1 ?>">上一页</a><?php endif; ?>
+<?php
+$from = max(1, $page - 2);
+$to = min($pages, $from + 4);
+$from = max(1, $to - 4);
+for ($i = $from; $i <= $to; $i++) {
+    $qs = http_build_query(array_filter(['q' => $q, 'model' => $model, 'page' => $i]));
+    echo $i === $page
+        ? '<span class="cur">' . $i . '</span>'
+        : '<a href="/?' . h($qs) . '" data-page="' . $i . '">' . $i . '</a>';
+}
+?>
+<?php if ($page < $pages): ?><a href="/?<?= h(http_build_query(array_filter(['q' => $q, 'model' => $model, 'page' => $page + 1]))) ?>" data-page="<?= $page + 1 ?>">下一页</a><?php endif; ?>
+</nav>
+<?php endif; ?>
+<?php endif; ?>
+</div>
+</div>
+<?php render_foot();
+}
 
 // ============================================================== 详情页
 function render_detail(string $slug, string $q, string $model): void
@@ -62,7 +155,7 @@ function render_detail(string $slug, string $q, string $model): void
 
     $prompts   = get_prompts((int)$cur['id']);
     $tags      = json_decode((string)$cur['tags'], true) ?: [];
-    $images    = json_decode((string)$cur['images'], true) ?: [];
+    $images    = item_image_srcs($cur);
     $videos    = json_decode((string)($cur['videos'] ?? '[]'), true) ?: [];
     [$prev, $next] = get_neighbors($cur, $q, $model);
 
@@ -92,13 +185,14 @@ function render_detail(string $slug, string $q, string $model): void
         'page_url'  => $pageUrl,
         'cover'     => $images ? img_url((string)$images[0]) : '',
         'model'     => $model,
-        'site_name' => 'OpenNana 提示词库',
+        'site_name' => site_brand(),
         'prompts'   => $sharePrompts,
     ];
-    $related = related_items($cur, 16);   // 相关推荐：PC 16 个 4 列，移动端 CSS 只显示前 10
+    $related = related_items($cur, 16);   // PC：同模型优先；移动端由 JS 改为随机无限下拉
     // 相关推荐数据内嵌 JSON，由 cards.js 客户端统一渲染（与首页卡片同款）
     $relatedJs = array_map(static function (array $r): array {
         return [
+            'id'    => (int)$r['id'],
             'url'   => detail_url((string)$r['slug']),
             'title' => (string)$r['title'],
             'cover' => $r['cover'] ? thumb_url((int)$r['id'], 1, 400) : '',
@@ -208,11 +302,12 @@ function render_detail(string $slug, string $q, string $model): void
                 </div>
             </div>
         </div>
-        <div class="related">
-            <div class="sec-title"><span>相关推荐</span></div>
-            <div class="related-grid" id="related-grid"></div>
-        </div>
-        <script type="application/json" class="related-data"><?= json_encode($relatedJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
+    <div class="related" data-exclude-id="<?= (int)$cur['id'] ?>">
+        <div class="sec-title"><span>相关推荐</span></div>
+        <div class="related-grid" id="related-grid"></div>
+        <div class="load-sentinel" id="related-sentinel" aria-hidden="true"></div>
+    </div>
+    <script type="application/json" class="related-data"><?= json_encode($relatedJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
         <a class="back" href="/">← 返回图库</a>
         <p class="kbd-hint">
             <span>点击图片全屏（多图 <span class="kbd">←</span><span class="kbd">→</span> 切换 · <span class="kbd">Esc</span> 关闭）</span>
@@ -288,7 +383,7 @@ function render_legacy(string $q, string $model, int $page): void
     <!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
     <meta name="robots" content="noindex,nofollow">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>[DEBUG] OpenNana 提示词库 · 本地图库</title>
+    <title>[DEBUG] <?= h(site_brand()) ?> · 本地图库</title>
     <link rel="stylesheet" href="/assets/css/style.css">
     <?= watermark_style() ?>
     <?= analytics_scripts() ?>
@@ -296,7 +391,7 @@ function render_legacy(string $q, string $model, int $page): void
     <script>(function(){try{var t=localStorage.getItem('theme');var s=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.className=(t==='dark'||(!t&&s))?'dark':'';}catch(e){}})();</script>
     </head><body>
     <header class="site-head"><div class="inner">
-        <a class="logo" href="/">[DEBUG] Open<span>Nana</span></a>
+        <a class="logo" href="/">[DEBUG] <?= site_logo_html() ?></a>
         <form class="search-bar" method="get" action="/index.html">
             <input type="text" name="q" value="<?= h($q) ?>" placeholder="搜索标题 / 提示词内容…" autocomplete="off">
             <input type="hidden" name="debug" value="1">
@@ -416,7 +511,7 @@ function render_seo_head(array $info): void
                 '@type'         => 'WebSite',
                 '@id'           => $site . '/#website',
                 'url'           => $site . '/',
-                'name'          => 'OpenNana 提示词库',
+                'name'          => site_brand(),
             ],
             [
                 '@type'         => 'CreativeWork',
@@ -431,7 +526,7 @@ function render_seo_head(array $info): void
                 'image'         => $img,
                 'inLanguage'    => 'zh-CN',
                 'isPartOf'      => ['@id' => $site . '/#website'],
-                'publisher'     => ['@type' => 'Organization', 'name' => 'OpenNana 提示词库', 'url' => $site . '/'],
+                'publisher'     => ['@type' => 'Organization', 'name' => site_brand(), 'url' => $site . '/'],
             ],
         ],
     ];
@@ -451,10 +546,10 @@ function render_seo_head(array $info): void
 <meta name="theme-color" content="#0f1216" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
 <link rel="canonical" href="<?= h($url) ?>">
-<link rel="icon" href="data:image/svg+xml,<?= rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🍌</text></svg>') ?>">
+<link rel="icon" href="data:image/svg+xml,<?= rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🍉</text></svg>') ?>">
 
 <meta property="og:type" content="<?= h($type) ?>">
-<meta property="og:site_name" content="OpenNana 提示词库">
+<meta property="og:site_name" content="<?= h(site_brand()) ?>">
 <meta property="og:title" content="<?= h($title) ?>">
 <meta property="og:description" content="<?= h($descr) ?>">
 <meta property="og:url" content="<?= h($url) ?>">
@@ -475,7 +570,7 @@ function render_seo_head(array $info): void
 </head>
 <body>
 <header class="site-head"><div class="inner">
-    <a class="logo" href="/">Open<span>Nana</span> 提示词库</a>
+    <a class="logo" href="/"><?= site_logo_html() ?></a>
     <form class="search-bar" method="get" action="/index.html">
         <input type="text" name="q" placeholder="搜索标题 / 提示词内容…" autocomplete="off">
         <button type="submit">搜索</button>
@@ -492,9 +587,13 @@ function render_seo_head(array $info): void
 function render_foot(): void
 {
     ?>
+<footer class="site-foot"><div class="inner">
+    <span class="foot-stats" id="traffic-stats"></span>
+</div></footer>
 <div class="toast" id="toast"></div>
 <script src="/assets/js/cards.js" defer></script>
 <script src="/assets/js/ads.js" defer></script>
+<script src="/assets/js/footer.js" defer></script>
 <script src="/assets/js/app.js" defer></script>
 </body></html>
 <?php
@@ -516,7 +615,7 @@ function render_404(string $slug): void
 {
     http_response_code(404);
     ?><!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
-    <title>未找到 - OpenNana 提示词库</title>
+    <title>未找到 - <?= h(site_brand()) ?></title>
     <meta name="robots" content="noindex">
     <link rel="stylesheet" href="/assets/css/style.css">
     </head><body><div class="wrap"><div class="empty">

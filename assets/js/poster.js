@@ -1,5 +1,5 @@
 /**
- * OpenNana 提示词库 - 分享 & 竖版海报
+ * 🍉 ChiguaNana 提示词库 - 分享 & 竖版海报
  *
  * 功能：
  *   - 详情页"分享"按钮打开分享弹窗
@@ -113,13 +113,27 @@
     }
 
     // ------------------------------------------------------- 海报绘制
-    function loadImage(src) {
+    var IMG_TIMEOUT = 15000;   // 单次加载超时（代理回源可能较慢，避免 loading 无限转）
+
+    function loadImageOnce(src) {
         return new Promise(function (resolve) {
-            if (!src) { resolve(null); return; }
             var im = new Image();
-            im.onload = function () { resolve(im); };
-            im.onerror = function () { resolve(null); };
+            var t = setTimeout(function () {
+                im.onload = im.onerror = null;
+                im.src = '';
+                resolve(null);
+            }, IMG_TIMEOUT);
+            im.onload = function () { clearTimeout(t); resolve(im); };
+            im.onerror = function () { clearTimeout(t); resolve(null); };
             im.src = src;
+        });
+    }
+
+    function loadImage(src) {
+        if (!src) return Promise.resolve(null);
+        // 失败/超时自动重试一次，减少代理偶发抖动导致海报缺图
+        return loadImageOnce(src).then(function (im) {
+            return im || loadImageOnce(src);
         });
     }
 
@@ -142,7 +156,14 @@
             // 版式高度
             var iw = imgEl ? imgEl.naturalWidth : 0;
             var ih = imgEl ? imgEl.naturalHeight : 0;
-            var imgH = (iw && ih) ? Math.min(CONTENT_W * ih / iw, 720) : 0;
+            // 100% 完整展示（不裁剪）：按原始比例以内容宽度展开；
+            // 超长图限高 IMG_MAX_H，等比缩小后水平居中，仍保留完整画面
+            var IMG_MAX_H = 1000;
+            var imgH = 0, imgW = 0;
+            if (iw && ih) {
+                imgH = Math.round(Math.min(CONTENT_W * ih / iw, IMG_MAX_H));
+                imgW = Math.round(iw * imgH / ih);
+            }
 
             var y = PAD;                      // 顶部留白（与左右内边距对称，不加装饰条）
             if (imgH > 0) { y += imgH + 30; }
@@ -161,14 +182,13 @@
             // 背景（纯白，无顶部装饰条）
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
 
-            // 封面图（圆角 + cover 裁切，顶部与左右留白对称）
+            // 封面图（圆角，完整绘制不裁剪；窄于内容宽时水平居中）
             if (imgEl && imgH > 0) {
+                var dx = PAD + Math.round((CONTENT_W - imgW) / 2);
                 ctx.save();
-                roundRectPath(ctx, PAD, PAD, CONTENT_W, imgH, 16);
+                roundRectPath(ctx, dx, PAD, imgW, imgH, 16);
                 ctx.clip();
-                var scale = Math.max(CONTENT_W / iw, imgH / ih);
-                var sw = CONTENT_W / scale, sh = imgH / scale;
-                ctx.drawImage(imgEl, (iw - sw) / 2, (ih - sh) / 2, sw, sh, PAD, PAD, CONTENT_W, imgH);
+                ctx.drawImage(imgEl, dx, PAD, imgW, imgH);
                 ctx.restore();
             }
 
@@ -198,7 +218,7 @@
             drawQR(ctx, d.page_url, PAD, footY, 150);
             var tx = PAD + 150 + 26;
             ctx.fillStyle = '#1f2430'; ctx.font = '700 28px ' + FONT;
-            ctx.fillText(d.site_name || 'OpenNana 提示词库', tx, footY + 8);
+            ctx.fillText(d.site_name || '🍉 ChiguaNana 提示词库', tx, footY + 8);
             ctx.fillStyle = '#6b7280'; ctx.font = '400 20px ' + FONT;
             var urlTxt = d.page_url.replace(/^https?:\/\//, '');
             while (ctx.measureText(urlTxt).width > CONTENT_W - 176 && urlTxt.length > 8) urlTxt = urlTxt.slice(0, -2);
@@ -207,7 +227,7 @@
             ctx.fillStyle = '#9aa3b2'; ctx.font = '400 18px ' + FONT;
             ctx.fillText('语言：' + (lg === 'zh' ? '中文' : 'English'), tx, footY + 122);
 
-            return c;
+            return { canvas: c, coverLoaded: !!imgEl };
         });
     }
 
@@ -217,7 +237,7 @@
     }
 
     function downloadPoster() {
-        if (!posterCanvas) return;
+        if (!posterCanvas) { toast('海报生成中，请稍候…'); return; }
         var a = document.createElement('a');
         a.href = posterCanvas.toDataURL('image/jpeg', 0.92);
         a.download = (data.slug || 'poster') + '-poster.jpg';
@@ -226,7 +246,7 @@
     }
 
     function sharePosterImage() {
-        if (!posterCanvas) return;
+        if (!posterCanvas) { toast('海报生成中，请稍候…'); return; }
         canvasToBlob(posterCanvas).then(function (blob) {
             if (!blob) { downloadPoster(); return; }
             var file = new File([blob], (data.slug || 'poster') + '-poster.jpg', { type: 'image/jpeg' });
@@ -240,7 +260,7 @@
 
     function shareWeibo() {
         var u = 'https://service.weibo.com/share/share.php?url=' + encodeURIComponent(data.page_url) +
-                '&title=' + encodeURIComponent((data.title || '') + ' - OpenNana 提示词');
+                '&title=' + encodeURIComponent((data.title || '') + ' - 🍉 ChiguaNana 提示词');
         window.open(u, '_blank', 'noopener,width=680,height=520');
     }
 
@@ -268,7 +288,7 @@
 
     function systemShare() {
         if (navigator.share) {
-            navigator.share({ title: data.title, text: (data.title || '') + ' - OpenNana 提示词', url: data.page_url })
+            navigator.share({ title: data.title, text: (data.title || '') + ' - 🍉 ChiguaNana 提示词', url: data.page_url })
                 .catch(function () {});
         } else {
             copyLink();
@@ -276,12 +296,64 @@
     }
 
     // ------------------------------------------------------- 弹窗
+    var previewSeq = 0;
+
+    // 加载动画 / 失败重试浮层：由 JS 动态注入，无需改动已生成的静态页
+    function ensureOverlay(wrap) {
+        var ov = wrap.querySelector('.poster-ov');
+        if (!ov) {
+            ov = document.createElement('div');
+            ov.className = 'poster-ov';
+            var sp = document.createElement('div');
+            sp.className = 'poster-spin';
+            var txt = document.createElement('p');
+            txt.className = 'poster-ov-txt';
+            txt.textContent = '海报生成中…';
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn poster-retry';
+            btn.textContent = '生成失败，点击重试';
+            btn.addEventListener('click', refreshPreview);
+            ov.appendChild(sp); ov.appendChild(txt); ov.appendChild(btn);
+            wrap.appendChild(ov);
+        }
+        return ov;
+    }
+
+    function markPreviewError(seq) {
+        if (seq !== previewSeq) return;
+        var wrap = $('.poster-preview');
+        if (wrap) { wrap.classList.remove('loading'); wrap.classList.add('error'); }
+    }
+
     function refreshPreview() {
+        var wrap = $('.poster-preview');
         var img = $('#poster-preview');
-        buildPoster(data, lang).then(function (c) {
-            posterCanvas = c;
-            if (img) img.src = c.toDataURL('image/jpeg', 0.92);
-        });
+        if (!img) return;
+        var seq = ++previewSeq;
+        posterCanvas = null;                      // 生成期间禁用保存/分享，避免拿到旧图
+        img.classList.remove('on');
+        img.removeAttribute('src');               // 先隐藏空 <img>，杜绝一打开就显示破图
+        if (wrap) {
+            ensureOverlay(wrap);
+            wrap.classList.remove('error');
+            wrap.classList.add('loading');        // 先出加载动画
+        }
+        buildPoster(data, lang).then(function (r) {
+            if (seq !== previewSeq) return;       // 已切换语言/重新打开，丢弃过期结果
+            var url = r.canvas.toDataURL('image/jpeg', 0.92);
+            var pre = new Image();                // 预解码 dataURL，就绪后再淡入
+            pre.onload = function () {
+                if (seq !== previewSeq) return;
+                posterCanvas = r.canvas;
+                img.src = url;
+                img.classList.add('on');
+                if (wrap) { wrap.classList.remove('loading', 'error'); }
+                if (!r.coverLoaded && data && data.cover) toast('封面图暂时无法加载，海报不含图片');
+            };
+            pre.onerror = function () { markPreviewError(seq); };
+            pre.src = url;
+        }).catch(function () { markPreviewError(seq); });
     }
 
     function setLang(lg) {

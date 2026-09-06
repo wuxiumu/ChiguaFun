@@ -1,13 +1,12 @@
 <?php
 /**
  * PHP 内置服务器路由
- * 用途：让静态资源（CSS / 缩略图 / 图片）带上合适的 HTTP 缓存头
+ * 用途：
+ *   - 本地开发（localhost）：默认走动态 PHP，改代码即预览，不必重生静态页
+ *   - 静态资源附加缓存头
  *
  * 用法：
- *   php -S 127.0.0.1:8765 -t . router.php
- *
- * 返回 false 表示交给默认静态处理器（会忽略我们设置的 header）。
- * 我们自己 serve 静态文件并附加头，这样头才会真正生效。
+ *   php -S localhost:1234 -t . router.php
  */
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
@@ -18,8 +17,22 @@ if (strpos($path, '..') !== false) {
     return true;
 }
 
-// 首页：直接 serve index.html，避免 PHP CLI Server 默认的 301 跳转。
-// 但 /?p=slug（详情）与 /?debug=1 需交给 index.php，不能返回静态首页。
+function router_is_local(): bool
+{
+    $host = strtolower((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
+    $host = preg_replace('/:\d+$/', '', $host) ?? $host;
+    return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+}
+
+$local = router_is_local();
+
+// 本地开发：首页与 index.html 一律动态（index.php）
+if ($local && ($path === '/' || $path === '/index.html' || $path === '/index.htm')) {
+    require __DIR__ . '/index.php';
+    return true;
+}
+
+// 首页（生产）：直接 serve index.html；?p= / ?debug= 仍走动态
 if ($path === '/') {
     $dynamic = isset($_GET['p']) || isset($_GET['debug']);
     if (!$dynamic) {
@@ -32,7 +45,14 @@ if ($path === '/') {
             return true;
         }
     }
-    return false;   // 交回内置服务器 → 命中 index.php（详情/调试）
+    return false;
+}
+
+// 本地开发：详情页始终动态，改 PHP/配置即可预览
+if ($local && preg_match('#^/p/([^/]+)\.html$#', $path, $m)) {
+    $_GET['p'] = $m[1];
+    require __DIR__ . '/index.php';
+    return true;
 }
 
 $fs = __DIR__ . $path;
@@ -40,7 +60,7 @@ $fs = __DIR__ . $path;
 // 静态详情页缺失 → 回退动态详情（index.php?p=），保证 p/*.html 永不死链
 if (preg_match('#^/p/([^/]+)\.html$#', $path, $m) && !is_file($fs)) {
     $_GET['p'] = $m[1];
-    include __DIR__ . '/index.php';
+    require __DIR__ . '/index.php';
     return true;
 }
 
@@ -78,11 +98,9 @@ header('Content-Type: ' . $mime);
 header('Cache-Control: public, max-age=604800, immutable'); // 7 天 + 永久指纹
 header('X-Content-Type-Options: nosniff');
 
-// 缩略图这类 jpg 通常几十 KB，可以走 readfile 一次性发送
 $size = filesize($fs);
 header('Content-Length: ' . $size);
 
-// 简单 ETag（基于 mtime + size）—— 配合客户端 304
 $etag = '"' . md5($fs . '|' . filemtime($fs) . '|' . $size) . '"';
 header('ETag: ' . $etag);
 if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag) {
@@ -90,7 +108,6 @@ if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']
     return true;
 }
 
-// 如果客户端支持压缩且文件不是预压缩类型，则压缩传输
 $ae = strtolower((string)($_SERVER['HTTP_ACCEPT_ENCODING'] ?? ''));
 $compressible = !preg_match('/\.(jpe?g|png|gif|webp|gz|brz|woff2?|ico)$/i', $path);
 if ($compressible && strpos($ae, 'gzip') !== false && extension_loaded('zlib')

@@ -1,6 +1,6 @@
 <?php
 /**
- * OpenNana 提示词库 - 静态化构建
+ * 🍉 ChiguaNana 提示词库 - 静态化构建
  *
  * 用法：
  *   php gen_static.php           # 生成 index.html + sitemap.xml + robots.txt
@@ -73,7 +73,7 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
     $site   = site_origin();
     // TDK 可配置（config: seo_title / seo_description / seo_keywords，支持 {count} 占位）
     $tdk    = seo_tdk($total);
-    $title  = $tdk['title'] !== '' ? $tdk['title'] : "OpenNana 提示词库 · {$total}+ 条 AI 提示词与生成案例";
+    $title  = $tdk['title'] !== '' ? $tdk['title'] : site_brand() . " · {$total}+ 条 AI 提示词与生成案例";
     $desc   = $tdk['desc']  !== '' ? $tdk['desc']  : "收录 {$total}+ 条 ChatGPT、Nano Banana、Seedance、Grok、即梦 等模型的 AI 图像与视频提示词，含原图与中英文版本，可一键复制。";
     $kw     = $tdk['keywords'];
     $cover  = pick_cover($rows);
@@ -94,13 +94,13 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
     $h[] = '<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">';
     $h[] = '<meta name="generator" content="opennana-static">';
     $h[] = '<link rel="canonical" href="' . $site . '/">';
-    $h[] = '<link rel="alternate" type="application/rss+xml" title="OpenNana 提示词库" href="' . $site . '/rss.xml">';
+    $h[] = '<link rel="alternate" type="application/rss+xml" title="' . h(site_brand()) . '" href="' . $site . '/rss.xml">';
     $h[] = '<link rel="sitemap" type="application/xml" href="' . $site . '/sitemap.xml">';
-    $h[] = '<link rel="icon" href="data:image/svg+xml,' . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🍌</text></svg>') . '">';
+    $h[] = '<link rel="icon" href="data:image/svg+xml,' . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🍉</text></svg>') . '">';
 
     // Open Graph
     $h[] = '<meta property="og:type" content="website">';
-    $h[] = '<meta property="og:site_name" content="OpenNana 提示词库">';
+    $h[] = '<meta property="og:site_name" content="' . h(site_brand()) . '">';
     $h[] = '<meta property="og:title" content="' . h($title) . '">';
     $h[] = '<meta property="og:description" content="' . h($desc) . '">';
     $h[] = '<meta property="og:url" content="' . $site . '/">';
@@ -138,7 +138,7 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
                 '@type'         => 'WebSite',
                 '@id'           => $site . '/#website',
                 'url'           => $site . '/',
-                'name'          => 'OpenNana 提示词库',
+                'name'          => site_brand(),
                 'description'   => $desc,
                 'inLanguage'    => 'zh-CN',
                 'potentialAction' => [
@@ -150,7 +150,7 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
             [
                 '@type'       => 'Organization',
                 '@id'         => $site . '/#org',
-                'name'        => 'OpenNana 提示词库',
+                'name'        => site_brand(),
                 'url'         => $site . '/',
                 'logo'        => $site . '/assets/img/logo.svg',
             ],
@@ -168,13 +168,13 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
     $h[] = '</head>';
     $h[] = '<body>';
     $h[] = '<header class="site-head"><div class="inner">';
-    $h[] = '<a class="logo" href="/">Open<span>Nana</span> 提示词库</a>';
-    $h[] = '<form class="search-bar" method="get" action="/index.html">';
+    $h[] = '<a class="logo" href="/">' . site_logo_html() . '</a>';
+    $h[] = '<form class="search-bar" method="get" action="/">';
     $h[] = '<input type="text" name="q" placeholder="搜索标题 / 提示词内容…" autocomplete="off">';
     $h[] = '<button type="submit">搜索</button>';
     $h[] = '</form>';
     $h[] = '<button type="button" class="btn random-btn" id="random-btn" title="随机看一批提示词">🎲 手气不错</button>';
-    $h[] = '<div class="stat-mini">已收录 ' . number_format($total) . ' 条 · 图片 ' . number_format($imgs) . ' 张</div>';
+    $h[] = '<div class="stat-mini">已收录 ' . number_format($total) . ' 条</div>';
     $h[] = '<button class="theme-toggle" id="theme-toggle" type="button" title="切换主题" aria-label="切换主题">';
     $h[] = '<svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
     $h[] = '<svg class="sun"  viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4V2m0 20v-2M4 12H2m20 0h-2M5.6 5.6 4.2 4.2m15.6 15.6-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
@@ -218,40 +218,25 @@ function gen_index(string $path, int $total, int $imgs, array $models, array $ro
     $h[] = '</div>'; // #main
     $h[] = '</div>'; // .wrap
 
-    // footer（文案居中；流量统计由 app.js 拉取 /api/tj.php 填充，Redis 不可用则留空隐藏）
+    // footer：骨架由模板输出，文案/链接由 assets/js/footer.js 注入（改 JS 即可，无需重生全站）
     $h[] = '<footer class="site-foot"><div class="inner">';
     $h[] = '<span class="foot-stats" id="traffic-stats"></span>';
-    $h[] = '<span class="foot-line">共 ' . number_format($total) . ' 条 · ' . number_format($imgs) . ' 张图 · '
-         . '<a href="/sitemap.xml">sitemap</a> · <a href="/index.php?debug=1">debug</a> · '
-         . '<a href="https://github.com/wuxiumu/ChiguaFun" target="_blank" rel="noopener">OpenNana 提示词库</a></span>';
     $h[] = '</div></footer>';
 
     $h[] = '<div class="toast" id="toast"></div>';
     $h[] = '<script src="/assets/js/cards.js" defer></script>
 <script src="/assets/js/ads.js" defer></script>
+<script src="/assets/js/footer.js" defer></script>
 <script src="/assets/js/app.js" defer></script>';
     $h[] = '</body></html>';
 
     file_put_contents($path, implode("\n", $h));
 }
 
-// 列表卡片：与 cards.js 的 .gcard 同构（方形缩略图 + 两行标题），首屏与 JS 重渲染一致
+// 列表卡片：与 cards.js 的 .gcard 同构（委托 lib.php card_html）
 function card_static(array $r): string
 {
-    $id    = (int)$r['id'];
-    $slug  = (string)$r['slug'];
-    $title = (string)$r['title'];
-    $url   = detail_url($slug);
-    $thumb = $r['cover'] ? thumb_url($id, 1, 400) : '';
-
-    $img = $thumb
-        ? '<img src="' . h($thumb) . '" alt="' . h($title) . '" loading="lazy" decoding="async">'
-        : '<span class="ph">无图片</span>';
-
-    return '<a class="gcard" href="' . h($url) . '">'
-         . '<span class="gcard-thumb">' . $img . '</span>'
-         . '<span class="gcard-t">' . h($title) . '</span>'
-         . '</a>';
+    return card_html($r);
 }
 
 function pick_cover(array $rows): string

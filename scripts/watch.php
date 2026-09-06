@@ -60,10 +60,11 @@ function tick(bool $quiet): array {
     if (!$quiet && $buildOut !== null) echo trim($buildOut) . PHP_EOL;
     if (!$quiet && $buildErr !== null && trim($buildErr) !== '') echo '[build] ' . trim($buildErr) . PHP_EOL;
 
-    // 2) 预热缩略图（仅 local 模式；cdn 模式图片直连 CDN，无需缩略图）
+    // 2) 预热缩略图（仅 local 模式；cdn/oss 由远端图片处理，无需本地 thumbs）
     $tThumb = 0.0;
     $thumbsNew = 0;
-    if (config('image_mode') !== 'cdn') {
+    $mode = (string)config('image_mode');
+    if ($mode !== 'cdn' && $mode !== 'oss') {
         if (!is_dir(THUMB_DIR)) mkdir(THUMB_DIR, 0755, true);
         $t0 = microtime(true);
         $beforeThumbs = count(glob(THUMB_DIR . '/*') ?: []);

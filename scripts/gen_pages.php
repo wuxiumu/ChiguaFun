@@ -1,6 +1,6 @@
 <?php
 /**
- * OpenNana 提示词库 - 详情页静态化
+ * 🍉 ChiguaNana 提示词库 - 详情页静态化
  *
  * 用法：
  *   php scripts/gen_pages.php            生成全部 p/<slug>.html
@@ -74,7 +74,7 @@ function static_detail_html(array $cur, string $site): string
 
     $prompts = get_prompts((int)$cur['id']);
     $tags    = json_decode((string)$cur['tags'], true) ?: [];
-    $images  = json_decode((string)$cur['images'], true) ?: [];
+    $images  = item_image_srcs($cur);
     $videos  = json_decode((string)($cur['videos'] ?? '[]'), true) ?: [];
     [$prev, $next] = get_neighbors($cur, '', '');
 
@@ -114,12 +114,13 @@ function static_detail_html(array $cur, string $site): string
         'page_url'  => $pageUrl,
         'cover'     => $images ? img_url((string)$images[0]) : '',
         'model'     => $model,
-        'site_name' => 'OpenNana 提示词库',
+        'site_name' => site_brand(),
         'prompts'   => $sharePrompts,
     ];
-    $related = related_items($cur, 16);   // 相关推荐：PC 16 个 4 列，移动端 CSS 只显示前 10
+    $related = related_items($cur, 16);   // PC：同模型优先；移动端由 JS 改为随机无限下拉
     $relatedJs = array_map(static function (array $r): array {
         return [
+            'id'    => (int)$r['id'],
             'url'   => detail_url((string)$r['slug']),
             'title' => (string)$r['title'],
             'cover' => $r['cover'] ? thumb_url((int)$r['id'], 1, 400) : '',
@@ -159,9 +160,9 @@ function static_detail_html(array $cur, string $site): string
 <link rel="alternate" hreflang="x-default" href="<?= h($pageUrl) ?>">
 <meta name="theme-color" content="#0f1216" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
-<link rel="icon" href="data:image/svg+xml,<?= rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🍌</text></svg>') ?>">
+<link rel="icon" href="data:image/svg+xml,<?= rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text y="52" font-size="52">🍉</text></svg>') ?>">
 <meta property="og:type" content="article">
-<meta property="og:site_name" content="OpenNana 提示词库">
+<meta property="og:site_name" content="<?= h(site_brand()) ?>">
 <meta property="og:title" content="<?= h($seoTitle) ?>">
 <meta property="og:description" content="<?= h($descr) ?>">
 <meta property="og:url" content="<?= h($pageUrl) ?>">
@@ -180,7 +181,7 @@ function static_detail_html(array $cur, string $site): string
 </head>
 <body>
 <header class="site-head"><div class="inner">
-    <a class="logo" href="/">Open<span>Nana</span> 提示词库</a>
+    <a class="logo" href="/"><?= site_logo_html() ?></a>
     <form class="search-bar" method="get" action="/">
         <input type="text" name="q" placeholder="搜索标题 / 提示词内容…" autocomplete="off">
         <button type="submit">搜索</button>
@@ -273,16 +274,16 @@ function static_detail_html(array $cur, string $site): string
             </div>
         </div>
     </div>
-    <div class="related">
+    <div class="related" data-exclude-id="<?= (int)$cur['id'] ?>">
         <div class="sec-title"><span>相关推荐</span></div>
         <div class="related-grid" id="related-grid"></div>
+        <div class="load-sentinel" id="related-sentinel" aria-hidden="true"></div>
     </div>
     <script type="application/json" class="related-data"><?= json_encode($relatedJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
     <a class="back" href="/">← 返回图库</a>
 </div>
 <footer class="site-foot"><div class="inner">
     <span class="foot-stats" id="traffic-stats"></span>
-    <span class="foot-line">共 <?= number_format(total_items()) ?> 条 · <a href="/sitemap.xml">sitemap</a> · <a href="/">OpenNana 提示词库</a></span>
 </div></footer>
 <div class="share-modal" id="share-modal" role="dialog" aria-modal="true" aria-label="分享">
     <div class="share-box">
@@ -314,6 +315,7 @@ function static_detail_html(array $cur, string $site): string
 <script src="/assets/js/poster.js" defer></script>
 <script src="/assets/js/cards.js" defer></script>
 <script src="/assets/js/ads.js" defer></script>
+<script src="/assets/js/footer.js" defer></script>
 <script src="/assets/js/app.js" defer></script>
 </body>
 </html>

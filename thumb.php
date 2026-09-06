@@ -57,8 +57,23 @@ if (!$row) {
     exit;
 }
 
-$images = json_decode((string)$row['images'], true) ?: [];
-$rel    = $images[$n - 1] ?? ($images[0] ?? '');
+$images = item_image_srcs($row);
+// thumb.php 只处理本地文件；CDN/OSS 绝对地址不走这里
+$rel = '';
+foreach (array_merge(
+    [ (string)($images[$n - 1] ?? '') ],
+    $images
+) as $cand) {
+    if ($cand !== '' && !is_http_url($cand)) {
+        $rel = $cand;
+        break;
+    }
+}
+if ($rel === '') {
+    // 最后扫盘
+    $found = discover_local_images($id);
+    $rel = (string)($found[$n - 1] ?? ($found[0] ?? ''));
+}
 if ($rel === '') {
     http_response_code(404);
     exit;

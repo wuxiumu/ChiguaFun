@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS items (
     cover_w     INTEGER NOT NULL DEFAULT 0,
     cover_h     INTEGER NOT NULL DEFAULT 0,
     images      TEXT    NOT NULL DEFAULT '[]',
+    cdn_images  TEXT    NOT NULL DEFAULT '[]',
     videos      TEXT    NOT NULL DEFAULT '[]',
     reviewed_at TEXT    NOT NULL DEFAULT '',
     created_at  TEXT    NOT NULL DEFAULT '',
@@ -74,7 +75,12 @@ CREATE TABLE IF NOT EXISTS items (
 SQL);
 
 // 轻量迁移：老库补列
-foreach (['cover_w' => 'INTEGER NOT NULL DEFAULT 0', 'cover_h' => 'INTEGER NOT NULL DEFAULT 0', 'videos' => "TEXT NOT NULL DEFAULT '[]'"] as $col => $def) {
+foreach ([
+    'cover_w'    => 'INTEGER NOT NULL DEFAULT 0',
+    'cover_h'    => 'INTEGER NOT NULL DEFAULT 0',
+    'videos'     => "TEXT NOT NULL DEFAULT '[]'",
+    'cdn_images' => "TEXT NOT NULL DEFAULT '[]'",
+] as $col => $def) {
     $has = $db->query("SELECT COUNT(*) FROM pragma_table_info('items') WHERE name='$col'")->fetchColumn();
     if (!$has) {
         $db->exec("ALTER TABLE items ADD COLUMN $col $def");
@@ -135,13 +141,14 @@ foreach ($files as $f) {
 }
 
 $insItem = $db->prepare(
-    'INSERT INTO items (id,slug,title,descr,model,media_type,tags,src_name,src_url,url,cover,cover_w,cover_h,images,videos,reviewed_at,created_at,file,mtime)
-     VALUES (:id,:slug,:title,:descr,:model,:media_type,:tags,:src_name,:src_url,:url,:cover,:cover_w,:cover_h,:images,:videos,:reviewed_at,:created_at,:file,:mtime)
+    'INSERT INTO items (id,slug,title,descr,model,media_type,tags,src_name,src_url,url,cover,cover_w,cover_h,images,cdn_images,videos,reviewed_at,created_at,file,mtime)
+     VALUES (:id,:slug,:title,:descr,:model,:media_type,:tags,:src_name,:src_url,:url,:cover,:cover_w,:cover_h,:images,:cdn_images,:videos,:reviewed_at,:created_at,:file,:mtime)
      ON CONFLICT(id) DO UPDATE SET
        slug=excluded.slug, title=excluded.title, descr=excluded.descr, model=excluded.model,
        media_type=excluded.media_type, tags=excluded.tags, src_name=excluded.src_name,
        src_url=excluded.src_url, url=excluded.url, cover=excluded.cover,
-       cover_w=excluded.cover_w, cover_h=excluded.cover_h, images=excluded.images, videos=excluded.videos,
+       cover_w=excluded.cover_w, cover_h=excluded.cover_h, images=excluded.images,
+       cdn_images=excluded.cdn_images, videos=excluded.videos,
        reviewed_at=excluded.reviewed_at, created_at=excluded.created_at, file=excluded.file, mtime=excluded.mtime'
 );
 $delText = $db->prepare('DELETE FROM ptext   WHERE item_id = ?');
@@ -161,19 +168,20 @@ foreach ($todo as [$path, $base, $mt]) {
         continue;
     }
 
-    // 按 image_mode 选择图片来源：
-    //   cdn   —— frontmatter 的 source_images（CDN 原图），无本地文件则不读宽高
-    //   local —— 正文 ![]() 的本地相对路径，读文件头拿宽高做占位
-    $isCdn = config('image_mode') === 'cdn';
-    $imgs  = $isCdn
-        ? (array)($r['source_images'] ?: $r['images'])
-        : (array)$r['images'];
-    $imgs  = array_values(array_filter(
-        array_map('strval', $imgs),
+    // 双轨入库：images=本地相对路径，cdn_images=源站 CDN。
+    // 展示时按 config.image_mode 选择，改配置即可切换，不必重建索引。
+    $localImgs = array_values(array_filter(
+        array_map('strval', (array)$r['images']),
         static fn($u) => $u !== ''
     ));
-    $cover = $imgs[0] ?? '';
-    [$cw, $ch] = $isCdn ? [0, 0] : cover_size($cover);
+    $cdnImgs = array_values(array_filter(
+        array_map('strval', (array)($r['source_images'] ?? [])),
+        static fn($u) => $u !== ''
+    ));
+    $cover = $localImgs[0] ?? ($cdnImgs[0] ?? '');
+    [$cw, $ch] = ($localImgs && !preg_match('#^https?://#i', $localImgs[0]))
+        ? cover_size($localImgs[0])
+        : [0, 0];
 
     $insItem->execute([
         ':id'          => $r['id'],
@@ -189,7 +197,8 @@ foreach ($todo as [$path, $base, $mt]) {
         ':cover'       => $cover,
         ':cover_w'     => $cw,
         ':cover_h'     => $ch,
-        ':images'      => json_encode($imgs, JSON_UNESCAPED_UNICODE),
+        ':images'      => json_encode($localImgs, JSON_UNESCAPED_UNICODE),
+        ':cdn_images'  => json_encode($cdnImgs, JSON_UNESCAPED_UNICODE),
         ':videos'      => json_encode(array_values($r['videos']), JSON_UNESCAPED_UNICODE),
         ':reviewed_at' => $r['reviewed'],
         ':created_at'  => $r['created'],

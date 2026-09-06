@@ -6,7 +6,9 @@ cd /app
 # 1) 无本地配置：用模板生成，容器内 site_origin 留空（按请求 Host 自动探测），默认 cdn 模式
 if [ ! -f config.php ]; then
   cp config.example.php config.php
-  sed -i "s#'site_origin' => 'https://your-domain.com'#'site_origin' => ''#" config.php
+  # 容器内默认留空，按请求 Host 自动探测（宿主可挂载自己的 config.php 覆盖）
+  sed -i "s#'site_origin' => 'https://banana.chiguashentan.com'#'site_origin' => ''#" config.php
+  sed -i "s#'cors_origin' => 'https://banana.chiguashentan.com'#'cors_origin' => '*'#" config.php
   echo "[entrypoint] 已从模板生成 config.php（image_mode=cdn，site_origin 自动探测）"
 fi
 

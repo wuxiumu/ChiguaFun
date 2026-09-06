@@ -14,9 +14,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../lib.php';
 
-if (config('image_mode') === 'cdn') {
-    echo "当前为 cdn 模式，图片直连 CDN，无需生成缩略图。跳过。\n";
-    echo "（如需本地缩略图，把 config.php 的 image_mode 改为 'local' 并先用 scrape.py 下载图片）\n";
+if (config('image_mode') === 'cdn' || config('image_mode') === 'oss') {
+    $mode = (string)config('image_mode');
+    echo "当前为 {$mode} 模式，缩略图由 CDN/OSS 图片处理完成，无需本地生成。跳过。\n";
+    if ($mode === 'cdn') {
+        echo "（如需本地缩略图，把 config.php 的 image_mode 改为 'local' 并先用 scrape.py 下载图片）\n";
+    }
     exit(0);
 }
 

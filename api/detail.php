@@ -38,7 +38,7 @@ if (!$cur) {
     return;
 }
 
-$images = json_decode((string)$cur['images'], true) ?: [];
+$images = item_image_srcs($cur);
 $videos = json_decode((string)($cur['videos'] ?? '[]'), true) ?: [];
 $tags   = json_decode((string)$cur['tags'], true) ?: [];
 

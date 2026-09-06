@@ -38,6 +38,11 @@ function db(): PDO
         $pdo->exec('PRAGMA synchronous=NORMAL');
         $pdo->exec('PRAGMA cache_size=-32768');   // 32MB
         $pdo->exec('PRAGMA mmap_size=268435456'); // 256MB
+        // 双轨图片：images=本地路径，cdn_images=源站 CDN；改 image_mode 即时切换
+        $has = (int)$pdo->query("SELECT COUNT(*) FROM pragma_table_info('items') WHERE name='cdn_images'")->fetchColumn();
+        if ($has === 0) {
+            $pdo->exec("ALTER TABLE items ADD COLUMN cdn_images TEXT NOT NULL DEFAULT '[]'");
+        }
         $GLOBALS['__db'] = $pdo;
     }
     return $GLOBALS['__db'];
@@ -194,8 +199,8 @@ function get_prompts(int $id): array
 }
 
 /**
- * 相关推荐：同模型优先（按收录时间倒序），不足 limit 再补近期其它模型；排除自身。
- * 返回精简字段（id/slug/title/cover/cover_w/cover_h），供详情页.related-grid 使用。
+ * 相关推荐（PC 详情首屏）：同模型优先（按收录时间倒序），不足再补近期其它模型；排除自身。
+ * 移动端详情由 app.js 改为 /api/random.php 随机无限下拉，不再受本函数条数限制。
  */
 function related_items(array $cur, int $limit = 16): array
 {
@@ -275,27 +280,112 @@ function get_neighbors(array $cur, string $q, string $model): array
 
 // ------------------------------------------------------------------ 图片 URL
 
+function decode_json_str_list(mixed $raw): array
+{
+    if (is_array($raw)) {
+        $arr = $raw;
+    } else {
+        $arr = json_decode((string)$raw, true);
+    }
+    if (!is_array($arr)) {
+        return [];
+    }
+    return array_values(array_filter(
+        array_map(static fn($u): string => trim((string)$u), $arr),
+        static fn(string $u): bool => $u !== ''
+    ));
+}
+
+function is_http_url(string $u): bool
+{
+    return (bool)preg_match('#^https?://#i', $u);
+}
+
+/** 按条目 id 扫描本地 images/{id}-{n}.*（无索引时的兜底） */
+function discover_local_images(int $id): array
+{
+    if ($id <= 0) {
+        return [];
+    }
+    $out = [];
+    for ($n = 1; $n <= 30; $n++) {
+        $hit = '';
+        foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $ext) {
+            $rel = 'images/' . $id . '-' . $n . '.' . $ext;
+            if (is_file(ROOT_DIR . '/' . $rel)) {
+                $hit = $rel;
+                break;
+            }
+        }
+        if ($hit === '') {
+            break;
+        }
+        $out[] = $hit;
+    }
+    return $out;
+}
+
 /**
- * 取某条目的图片引用数组（DB 里存的值随 image_mode 而异）：
- *   - cdn   模式：完整的 CDN 原图 URL（来自 md frontmatter 的 source_images）
- *   - local 模式：本地相对路径 images/<id>-<n>.<ext>
- * 每请求按 id 记忆化，主键查询开销可忽略。
+ * 按当前 image_mode 从一行 items 记录取出图片源列表（不拼最终 URL）。
+ *   - cdn  → cdn_images（缺省时回退 images 里的 http 地址）
+ *   - oss / local → images 本地相对路径（缺省时扫盘 / 再回退）
+ */
+function item_image_srcs(array $row): array
+{
+    $local = decode_json_str_list($row['images'] ?? '[]');
+    $cdn   = decode_json_str_list($row['cdn_images'] ?? '[]');
+
+    // 兼容旧库：images 列直接存的是 CDN 绝对地址
+    if (!$cdn && $local && is_http_url($local[0])) {
+        $cdn   = $local;
+        $local = [];
+    }
+
+    $mode = (string)config('image_mode');
+    if ($mode === 'cdn') {
+        return $cdn ?: $local;
+    }
+
+    if ($local && !is_http_url($local[0])) {
+        return $local;
+    }
+    $id = (int)($row['id'] ?? 0);
+    $found = discover_local_images($id);
+    if ($found) {
+        return $found;
+    }
+    return $local ?: $cdn;
+}
+
+/**
+ * 取某条目当前模式下的图片源列表。
+ * 按 id + image_mode 记忆化；切换配置后新请求自然换源。
  */
 function item_images(int $id): array
 {
     static $cache = [];
-    if (isset($cache[$id])) {
-        return $cache[$id];
+    $mode = (string)config('image_mode');
+    $key  = $id . '@' . $mode;
+    if (isset($cache[$key])) {
+        return $cache[$key];
     }
     try {
-        $st = db()->prepare('SELECT images FROM items WHERE id = ?');
+        $st = db()->prepare('SELECT id, images, cdn_images FROM items WHERE id = ?');
         $st->execute([$id]);
-        $row  = $st->fetch();
-        $imgs = $row ? (json_decode((string)$row['images'], true) ?: []) : [];
+        $row = $st->fetch() ?: ['id' => $id, 'images' => '[]', 'cdn_images' => '[]'];
+        $imgs = item_image_srcs($row);
     } catch (Throwable $e) {
-        $imgs = [];
+        // 极老库无 cdn_images 列时降级
+        try {
+            $st = db()->prepare('SELECT id, images FROM items WHERE id = ?');
+            $st->execute([$id]);
+            $row = $st->fetch() ?: ['id' => $id, 'images' => '[]'];
+            $imgs = item_image_srcs($row);
+        } catch (Throwable $e2) {
+            $imgs = [];
+        }
     }
-    return $cache[$id] = $imgs;
+    return $cache[$key] = $imgs;
 }
 
 /** 按配置把 CDN 原图域名改写为自定义图床/反代；未配置则原样返回。 */
@@ -311,9 +401,7 @@ function cdn_url(string $u): string
 
 /**
  * 解析第 n 张图的展示 URL。签名与旧版一致，调用点无需改动。
- *   - cdn  模式：直接返回 CDN 原图 URL（无服务端缩略图，配合前端 loading=lazy）
- *   - local 模式：优先预热好的 thumbs/ 静态文件，否则走 thumb.php 按需生成
- * 图片引用为空时返回空串。
+ * 改 config.image_mode 即可切换图片源（cdn / oss / local），无需改业务代码。
  */
 function thumb_url(int $id, int $n = 1, int $w = 400): string
 {
@@ -322,14 +410,40 @@ function thumb_url(int $id, int $n = 1, int $w = 400): string
     if ($src === '') {
         return '';
     }
-    // CDN / 绝对地址：直接返回（可选改写域名）
-    if (preg_match('#^https?://#i', $src)) {
+
+    $mode = (string)config('image_mode');
+
+    if ($mode === 'oss') {
+        return media_url($src, $w);
+    }
+
+    if ($mode === 'cdn' || is_http_url($src)) {
         return cdn_url($src);
     }
-    // 本地模式：预热过的缩略图直接给静态路径，省掉一次 PHP 进程开销
+
+    // local：预热缩略图优先，否则 thumb.php 现算
     $rel = 'thumbs/' . $id . '-' . $n . '-w' . $w . '.jpg';
     if (is_file(ROOT_DIR . '/' . $rel)) {
-        return $rel;
+        return web_path($rel);
     }
-    return 'thumb.php?id=' . $id . '&n=' . $n . '&w=' . $w;
+    return web_path('thumb.php?id=' . $id . '&n=' . $n . '&w=' . $w);
+}
+
+/** 列表卡片 HTML（与 cards.js 的 .gcard 同构） */
+function card_html(array $r): string
+{
+    $id    = (int)$r['id'];
+    $slug  = (string)$r['slug'];
+    $title = (string)$r['title'];
+    $url   = detail_url($slug);
+    $thumb = thumb_url($id, 1, 400);
+
+    $img = $thumb
+        ? '<img src="' . h($thumb) . '" alt="' . h($title) . '" loading="lazy" decoding="async">'
+        : '<span class="ph">无图片</span>';
+
+    return '<a class="gcard" href="' . h($url) . '">'
+         . '<span class="gcard-thumb">' . $img . '</span>'
+         . '<span class="gcard-t">' . h($title) . '</span>'
+         . '</a>';
 }

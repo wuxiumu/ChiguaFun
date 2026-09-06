@@ -29,6 +29,14 @@ function config(?string $key = null)
             'image_mode'     => 'cdn',
             'cdn_base'       => '',
             'cdn_replace'    => '',
+            // 阿里云 OSS/CDN：资源根（含 images/、thumbs/、data/ 的父路径），无尾斜杠
+            'oss_base'       => '',
+            // 是否追加 ?x-oss-process=…（OSS 图片处理 / CDN 图片处理）
+            'oss_process'    => true,
+            // 输出格式：webp（推荐）| jpg | png | ''（保持原格式）
+            'oss_format'     => 'webp',
+            // 压缩质量 1–100；0 表示不追加 quality
+            'oss_quality'    => 75,
             'data_cdn'       => '',
             'cors_origin'    => '*',
             'watermark_text' => 'AI 生成',
@@ -36,8 +44,8 @@ function config(?string $key = null)
             'la51_id'        => '',
             // SEO TDK（Title/Description/Keywords），{count} 会被替换为收录总数
             'seo_title'       => '51chigua 吃瓜提示词库 · {count}+ 条 AI 提示词与生成案例',
-            'seo_description' => '51chigua 吃瓜提示词库（OpenNana）收录 {count}+ 条 ChatGPT、Nano Banana、Seedance、Grok、即梦等模型的 AI 图像与视频提示词，含原图与中英文版本，可一键复制、生成分享海报。提示词吃瓜、banana我要吃瓜，每日更新。',
-            'seo_keywords'    => '51chigua,吃瓜,提示词吃瓜,nana51chigua,banana51chigua,banana我要吃瓜,51吃瓜,吃瓜网,吃瓜群众,每日吃瓜,吃瓜爆料,AI吃瓜,吃瓜提示词,nano banana 提示词,nano banana prompt,banana 提示词,AI 提示词库,提示词大全,AI 绘画提示词,AI 视频提示词,ChatGPT 提示词,提示词分享,opennana 提示词,提示词画廊,prompt gallery',
+            'seo_description' => '51chigua 吃瓜提示词库（🍉 ChiguaNana）收录 {count}+ 条 ChatGPT、Nano Banana、Seedance、Grok、即梦等模型的 AI 图像与视频提示词，含原图与中英文版本，可一键复制、生成分享海报。提示词吃瓜、banana我要吃瓜，每日更新。',
+            'seo_keywords'    => '51chigua,吃瓜,提示词吃瓜,nana51chigua,banana51chigua,banana我要吃瓜,51吃瓜,吃瓜网,吃瓜群众,每日吃瓜,吃瓜爆料,AI吃瓜,吃瓜提示词,ChiguaNana,chiguanana 提示词,nano banana 提示词,nano banana prompt,banana 提示词,AI 提示词库,提示词大全,AI 绘画提示词,AI 视频提示词,ChatGPT 提示词,提示词分享,提示词画廊,prompt gallery',
         ];
         $file = __DIR__ . '/config.php';
         $user = is_file($file) ? (array)@include $file : [];
@@ -46,7 +54,25 @@ function config(?string $key = null)
     return $key === null ? $cfg : ($cfg[$key] ?? null);
 }
 
-/** 站点源：配置优先，其次按请求自动探测，最后回退 localhost。始终以无尾斜杠返回。 */
+/**
+ * 站点展示名（分享海报 / OG / JSON-LD 等纯文本场景）。
+ * 🍉 = 吃瓜彩蛋，ChiguaNana = 吃瓜 × Nano Banana。
+ */
+function site_brand(): string
+{
+    return '🍉 ChiguaNana 提示词库';
+}
+
+/** 顶栏 logo HTML（Nana 高亮） */
+function site_logo_html(): string
+{
+    return '🍉 Chigua<span>Nana</span> 提示词库';
+}
+
+/**
+ * 站点源：config.site_origin 优先，其次按请求 Host 自动探测，CLI 最后回退 localhost。
+ * 始终以无尾斜杠返回。生产请在 config.php 填写真实域名（如 https://banana.chiguashentan.com）。
+ */
 function site_origin(): string
 {
     $o = rtrim((string)config('site_origin'), '/');
@@ -57,6 +83,7 @@ function site_origin(): string
         $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
         return ($https ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
     }
+    // 仅本地 CLI 兜底；部署后务必配置 site_origin，否则 sitemap/og 会写成 localhost
     return 'http://localhost:8765';
 }
 
@@ -310,14 +337,115 @@ function parse_md_file(string $path): ?array
     ];
 }
 
-/** data/ 里记的相对路径 -> 可直接用于 <img> 的 URL */
+/** 站点内相对路径 → 根路径（避免 /p/xxx.html 下解析成 /p/thumbs/...） */
+function web_path(string $rel): string
+{
+    $rel = str_replace('\\', '/', trim($rel));
+    if ($rel === '' || preg_match('#^https?://#i', $rel) || str_starts_with($rel, '//') || str_starts_with($rel, 'data:')) {
+        return $rel;
+    }
+    return '/' . ltrim($rel, '/');
+}
+
+/**
+ * 本地开发主机（localhost / 127.0.0.1）：默认走动态 PHP，方便预览，无需重生静态页。
+ */
+function is_local_dev(): bool
+{
+    if (PHP_SAPI === 'cli-server' || PHP_SAPI === 'apache2handler' || PHP_SAPI === 'fpm-fcgi' || PHP_SAPI === 'cgi-fcgi' || isset($_SERVER['HTTP_HOST'])) {
+        $host = strtolower((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
+        $host = preg_replace('/:\d+$/', '', $host) ?? $host;
+        return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+    }
+    return false;
+}
+
+/** data/ 里记的相对路径 -> 可直接用于 <img> 的 URL（OSS 模式拼 oss_base，可带轻量压缩） */
 function img_url(string $p): string
 {
     $p = str_replace('\\', '/', $p);
     if (preg_match('#^https?://#i', $p)) {
-        return $p;
+        return media_url($p, 0);
     }
-    return ltrim(preg_replace('#^(\./|\.\./)+#', '', $p), '/');
+    $rel = ltrim(preg_replace('#^(\./|\.\./)+#', '', $p), '/');
+    return media_url($rel, 0);
+}
+
+/**
+ * 是否走阿里云 OSS/CDN 资源（仅 image_mode=oss）。
+ * oss 模式索引侧按本地相对路径入库，展示侧拼 oss_base + 可选图片处理。
+ */
+function use_oss_media(): bool
+{
+    return (string)config('image_mode') === 'oss'
+        && rtrim((string)config('oss_base'), '/') !== '';
+}
+
+/** 相对路径或绝对 URL → 对外可访问地址（相对路径在 OSS 模式下拼 oss_base） */
+function media_abs(string $src): string
+{
+    $src = str_replace('\\', '/', trim($src));
+    if ($src === '') {
+        return '';
+    }
+    if (preg_match('#^https?://#i', $src)) {
+        return cdn_url($src);
+    }
+    $rel = ltrim(preg_replace('#^(\./|\.\./)+#', '', $src), '/');
+    $base = rtrim((string)config('oss_base'), '/');
+    if ($base !== '' && use_oss_media()) {
+        return $base . '/' . $rel;
+    }
+    return web_path($rel);
+}
+
+/**
+ * 给阿里云 OSS/CDN 地址追加图片处理参数（缩放 / 格式 / 质量）。
+ * $w=0 表示不缩放（原图可仍转 webp+质量，便于详情大图与海报）。
+ * 文档：https://help.aliyun.com/document_detail/44688.html
+ */
+function oss_process_url(string $url, int $w = 0): string
+{
+    if ($url === '' || !config('oss_process')) {
+        return $url;
+    }
+    // 仅处理本站 OSS/CDN 主机，避免给第三方图乱加参数
+    $base = rtrim((string)config('oss_base'), '/');
+    if ($base === '' || strpos($url, $base) !== 0) {
+        return $url;
+    }
+    if (strpos($url, 'x-oss-process=') !== false) {
+        return $url;
+    }
+
+    $ops = [];
+    if ($w > 0) {
+        $ops[] = 'resize,m_lfit,w_' . max(1, min(4096, $w));
+    }
+    $fmt = strtolower(trim((string)config('oss_format')));
+    if (in_array($fmt, ['webp', 'jpg', 'jpeg', 'png', 'gif', 'bmp'], true)) {
+        $ops[] = 'format,' . ($fmt === 'jpeg' ? 'jpg' : $fmt);
+    }
+    $q = (int)config('oss_quality');
+    if ($q > 0 && $q <= 100) {
+        $ops[] = 'quality,q_' . $q;
+    }
+    if (!$ops) {
+        return $url;
+    }
+    $process = 'image/' . implode('/', $ops);
+    $sep = (strpos($url, '?') === false) ? '?' : '&';
+    return $url . $sep . 'x-oss-process=' . $process;
+}
+
+/** 统一媒体 URL：绝对化 + 可选 OSS 图片处理 */
+function media_url(string $src, int $w = 0): string
+{
+    $abs = media_abs($src);
+    if ($abs === '') {
+        return '';
+    }
+    return oss_process_url($abs, $w);
 }
 
 function fmt_date(?string $s): string
