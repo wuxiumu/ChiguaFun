@@ -30,6 +30,8 @@
 
 ### Why
 
+**Custom deploy / white-label:** WeChat **qingbao199101** · [wuxiumu@163.com](mailto:wuxiumu@163.com)
+
 Most "prompt galleries" are either closed SaaS or heavy Next.js apps that need a database server, Node runtime, and image storage. OpenNana is the opposite:
 
 - **Zero required dependencies** — plain PHP (built-in server) + Python stdlib. No Composer, no npm, no framework. (Only the optional traffic panel uses Redis.)
@@ -41,7 +43,7 @@ Most "prompt galleries" are either closed SaaS or heavy Next.js apps that need a
 ### Quick start
 
 ```bash
-git clone https://github.com/wuxiumu/ChiguaFun.git && cd opennana
+git clone https://github.com/wuxiumu/ChiguaFun.git && cd ChiguaFun
 
 make setup           # create config.php (image_mode=cdn by default)
 make scrape-sample   # pull 20 prompts (no images downloaded — CDN mode)
@@ -181,6 +183,9 @@ This repository contains **engine code only** — no prompt data, no images. Dat
 
 ## 🇨🇳 中文
 
+> **2 万+ AI 提示词自托管画廊**：CDN 出图、毫秒搜索、可静态 SEO，可按品牌白标交付。  
+> **定制 / 合作：** 微信 **qingbao199101**（备注：提示词站）｜邮箱 [wuxiumu@163.com](mailto:wuxiumu@163.com)
+
 ### 这是什么
 
 把 [opennana.com](https://opennana.com/awesome-prompt-gallery) 的 2 万+ 条 AI 提示词抓下来，用 Markdown 管理、SQLite 建索引、PHP 渲染成一个可自托管的画廊站点。**仓库只含引擎代码，不含任何图片与数据**，图片直连 CDN，clone 即用。
@@ -196,7 +201,7 @@ This repository contains **engine code only** — no prompt data, no images. Dat
 ### 快速开始
 
 ```bash
-git clone https://github.com/wuxiumu/ChiguaFun.git && cd opennana
+git clone https://github.com/wuxiumu/ChiguaFun.git && cd ChiguaFun
 make setup           # 生成 config.php（默认 image_mode=cdn）
 make scrape-sample   # 抓 20 条样本（CDN 模式，不下载图片）
 make index           # 建 SQLite 索引 + 静态首页
@@ -250,3 +255,25 @@ make serve           # 打开 http://127.0.0.1:8765
 MIT © 2026 OpenNana Prompt Gallery contributors
 
 </div>
+
+---
+
+## 定制合作 / Custom
+
+私有化部署、品牌白标、私有提示词库导入、CDN/广告位配置。加微信备注「提示词画廊」。
+
+## 联系方式
+
+定制、演示或合作：
+
+- 邮箱：[wuxiumu@163.com](mailto:wuxiumu@163.com)
+- 微信：**qingbao199101**（添加请备注来意）
+
+### 赞助支持
+
+如果内容对你有帮助，欢迎自愿赞助。
+
+| 微信赞赏码 | 支付宝收款码 |
+|---|---|
+| ![微信赞赏码](https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/wxprogram/zan/20261002185236_31_227.png) | ![支付宝收款码](https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/wxprogram/zan/20261002185309_32_227.jpg) |
+
