@@ -46,6 +46,19 @@
         return m ? m[1] + '-' + m[2] + '-' + m[3] : String(s);
     }
 
+    function fetchJson(url) {
+        return fetch(url, { headers: { 'Accept': 'application/json' } }).then(function (r) {
+            return r.json().catch(function () { return null; }).then(function (body) {
+                if (r.ok) return body;
+                var err = body && body.error;
+                var msg = err === 'index_not_ready'
+                    ? '索引尚未生成。在项目根执行 make index（需先有 data/）'
+                    : (err ? String(err) : ('HTTP ' + r.status));
+                throw new Error(msg);
+            });
+        });
+    }
+
     function showToast(msg) {
         var t = $('#toast');
         if (!t) return;
@@ -316,8 +329,7 @@
                 model: params.model || '',
                 q: params.q || ''
             }).toString();
-        fetch(url, { headers: { 'Accept': 'application/json' } })
-            .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+        fetchJson(url)
             .then(function (data) {
                 renderList(data, params, append);
                 if (pushState) {
@@ -347,8 +359,7 @@
         var btn = $('#random-btn');
         if (btn) { btn.disabled = true; btn.textContent = '🎲 抽取中…'; }
         function done() { if (btn) { btn.disabled = false; btn.textContent = '🎲 手气不错'; } }
-        fetch('/api/random.php?n=36', { headers: { 'Accept': 'application/json' } })
-            .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+        fetchJson('/api/random.php?n=36')
             .then(function (data) {
                 var ms = $('.masonry');
                 if (ms && data.items && data.items.length) {
@@ -632,8 +643,7 @@
         var ids = Object.keys(relState.seen);
         if (ids.length > 100) ids = ids.slice(-100); // 避免 exclude 过长
         var url = '/api/random.php?n=12' + (ids.length ? '&exclude=' + ids.join(',') : '');
-        fetch(url, { headers: { 'Accept': 'application/json' } })
-            .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+        fetchJson(url)
             .then(function (data) {
                 var batch = (data.items || []).filter(function (it) {
                     if (!it.id || relState.seen[it.id]) return false;
@@ -652,8 +662,9 @@
                 $$('.gcard-thumb img', grid).forEach(fadeImg);
                 if (sent) sent.innerHTML = '<span class="load-tip">上拉加载更多</span>';
             })
-            .catch(function () {
-                if (sent) sent.innerHTML = '<span class="load-tip">加载失败，上拉重试</span>';
+            .catch(function (e) {
+                var tip = (e && e.message) ? e.message : '加载失败，上拉重试';
+                if (sent) sent.innerHTML = '<span class="load-tip">' + escapeHtml(tip) + '</span>';
             })
             .then(function () {
                 relState.loading = false;

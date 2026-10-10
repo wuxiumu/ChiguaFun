@@ -7,8 +7,8 @@ HOST ?= 127.0.0.1
 PORT ?= 8765
 
 .DEFAULT_GOAL := help
-.PHONY: help setup scrape scrape-sample data index thumbs static serve sync watch \
-        docker-build docker-run clean clean-all
+.PHONY: help setup scrape scrape-sample data index thumbs static pages serve sync watch \
+        smoke docker-build docker-run clean clean-all
 
 help: ## 显示本帮助
 	@echo "OpenNana 提示词库 —— 可用命令："
@@ -17,6 +17,7 @@ help: ## 显示本帮助
 		| awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 	@echo
 	@echo "典型流程： make setup && make scrape-sample && make index && make serve"
+	@echo "启动检查： make smoke    （不抓数据，只确认引擎能起来）"
 
 setup: ## 从模板生成 config.php（已存在则跳过）
 	@if [ -f config.php ]; then echo "config.php 已存在，跳过"; else cp config.example.php config.php && echo "已生成 config.php（默认 image_mode=cdn）"; fi
@@ -42,8 +43,11 @@ static: ## 仅重新生成静态首页 index.html + sitemap
 pages: ## 生成全部静态详情页 p/<slug>.html（SEO/中英 hreflang/提示词进描述）
 	$(PHP) scripts/gen_pages.php
 
-serve: ## 启动内置服务器（默认 http://127.0.0.1:8765，可用 HOST/PORT 覆盖）
+serve: ## 启动内置服务器（默认 http://127.0.0.1:8765；私有部署用 HOST=0.0.0.0）
 	PHP_CLI_SERVER_WORKERS=8 $(PHP) -S $(HOST):$(PORT) -t . router.php
+
+smoke: ## 语法检查并请求一次首页与 /api/list.php（不需要数据集）
+	./scripts/smoke.sh
 
 sync: ## 一键同步：抓取 → 建索引（CDN 模式）
 	./scripts/sync.sh
@@ -54,8 +58,8 @@ watch: ## 增量守护：监听 data/ 自动重建索引
 docker-build: ## 构建 Docker 镜像 opennana
 	docker build -t opennana .
 
-docker-run: ## 运行容器（挂载 ./data 与 ./cache，映射端口，默认 8765）
-	docker run --rm -p $(PORT):8765 -v "$$PWD/data:/app/data" -v "$$PWD/cache:/app/cache" opennana
+docker-run: ## 运行容器（挂载 ./data 与 ./cache；若存在 .env 则 --env-file 传入）
+	docker run --rm -p $(PORT):8765 $(if $(wildcard .env),--env-file .env,) -v "$$PWD/data:/app/data" -v "$$PWD/cache:/app/cache" opennana
 
 clean: ## 清理可重建产物（索引 + 缩略图缓存）
 	rm -rf cache thumbs

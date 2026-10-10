@@ -6,7 +6,8 @@
  *   - 静态资源附加缓存头
  *
  * 用法：
- *   php -S localhost:1234 -t . router.php
+ *   php -S 127.0.0.1:8765 -t . router.php
+ *   php -S 0.0.0.0:8765 -t . router.php   # 私有部署，允许本机以外访问
  */
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
@@ -32,20 +33,20 @@ if ($local && ($path === '/' || $path === '/index.html' || $path === '/index.htm
     return true;
 }
 
-// 首页（生产）：直接 serve index.html；?p= / ?debug= 仍走动态
+// 首页：已有静态 index.html 且不是 ?p= / ?debug= 时直接输出。
+// 没有静态首页时进入 index.php（动态列表或「索引未生成」说明），避免 301 到不存在的文件。
 if ($path === '/') {
     $dynamic = isset($_GET['p']) || isset($_GET['debug']);
-    if (!$dynamic) {
-        $index = __DIR__ . '/index.html';
-        if (is_file($index)) {
-            header('Content-Type: text/html; charset=utf-8');
-            header('Cache-Control: public, max-age=60, must-revalidate');
-            header('X-Content-Type-Options: nosniff');
-            readfile($index);
-            return true;
-        }
+    $index = __DIR__ . '/index.html';
+    if (!$local && !$dynamic && is_file($index)) {
+        header('Content-Type: text/html; charset=utf-8');
+        header('Cache-Control: public, max-age=60, must-revalidate');
+        header('X-Content-Type-Options: nosniff');
+        readfile($index);
+        return true;
     }
-    return false;
+    require __DIR__ . '/index.php';
+    return true;
 }
 
 // 本地开发：详情页始终动态，改 PHP/配置即可预览

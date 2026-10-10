@@ -3,9 +3,9 @@
  * OpenNana 提示词库 - SQLite 索引构建
  *
  * 用法：
- *   php build_index.php            增量同步（只处理新增/改动过的 md）
- *   php build_index.php --full     全量重建
- *   php build_index.php --prune    增量 + 清理已删除文件的记录
+ *   php scripts/build_index.php            增量同步（只处理新增/改动过的 md）
+ *   php scripts/build_index.php --full     全量重建
+ *   php scripts/build_index.php --prune    增量 + 清理已删除文件的记录
  *
  * 索引文件：cache/index.db
  */

@@ -29,8 +29,9 @@ if ($debug) {
     return;
 }
 
-// 本地开发默认动态首页（方便预览）；生产仍 301 到静态 index.html
-if (is_local_dev()) {
+// 本地开发，或尚未生成静态首页：走动态页（无索引时给出可执行的下一步）。
+// 生产且 index.html 已存在时仍 301，保持静态 SEO 首页。
+if (is_local_dev() || !is_file(__DIR__ . '/index.html')) {
     render_dynamic_home($q, $model, $page);
     return;
 }
@@ -602,12 +603,16 @@ function render_foot(): void
 function render_empty_index(): void
 {
     ?><!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
-    <title>尚未生成索引</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>尚未生成索引 - <?= h(site_brand()) ?></title>
     <link rel="stylesheet" href="/assets/css/style.css">
     </head><body><div class="wrap"><div class="empty">
-    <h3>索引还没生成</h3>
-    <p>在 <code><?= h(__DIR__) ?></code> 下执行：</p>
-    <pre>php build_index.php && php gen_static.php</pre>
+    <h3>站点已启动，索引还没生成</h3>
+    <p>画廊引擎在运行，但 <code>cache/index.db</code> 不存在，所以列表是空的。在项目根目录执行：</p>
+    <pre>make scrape-sample   # 或放入自己的 data/*.md
+make index           # 等价：php scripts/build_index.php</pre>
+    <p>完成后刷新本页。接口在此之前会返回 <code>503 index_not_ready</code>。</p>
+    <p>私有部署请先把 <code>config.php</code> 的 <code>site_origin</code> 写成对外域名，再用 <code>make serve HOST=0.0.0.0</code> 或 Docker 对外提供服务。</p>
     </div></div></body></html><?php
 }
 

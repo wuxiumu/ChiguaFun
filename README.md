@@ -46,12 +46,16 @@ Most "prompt galleries" are either closed SaaS or heavy Next.js apps that need a
 git clone https://github.com/wuxiumu/ChiguaFun.git && cd ChiguaFun
 
 make setup           # create config.php (image_mode=cdn by default)
+make smoke           # PHP + HTTP check; no dataset required
 make scrape-sample   # pull 20 prompts (no images downloaded — CDN mode)
 make index           # build SQLite index + static homepage
 make serve           # http://127.0.0.1:8765
+# private / LAN:     make serve HOST=0.0.0.0
 ```
 
 Want the whole site? `make scrape` (≈20k prompts, images stay on the CDN) then `make index`.
+
+Before `make index`, the site still starts and explains that the index is missing (`503 index_not_ready` on `/api/*`). Set `site_origin` in `config.php` to the public URL before generating sitemap / OG tags. Behind a TLS-terminating proxy, an empty `site_origin` follows `Host` and `X-Forwarded-Proto`.
 
 ### Docker
 
@@ -59,6 +63,7 @@ Want the whole site? `make scrape` (≈20k prompts, images stay on the CDN) then
 make docker-build
 # prepare ./data first (scrape or fetch), then:
 make docker-run      # http://localhost:8765
+# optional: copy .env.example to .env first; docker-run passes it with --env-file
 ```
 
 ### Image modes
@@ -66,6 +71,7 @@ make docker-run      # http://localhost:8765
 | Mode | Images | Disk | How |
 |---|---|---|---|
 | **`cdn`** (default) | hot-linked from the source CDN | ~50 MB total | `scrape.py --cdn-only`, no download |
+| **`oss`** | relative paths joined to `oss_base` (optional Aliyun image process) | images stay on your bucket | set `image_mode` + `oss_base` |
 | **`local`** | downloaded + server-generated thumbnails | ~20 GB | `scrape.py` (downloads), `make thumbs` |
 
 Switch via `config.php → image_mode`. In `cdn` mode you can also rewrite the image host to your own CDN/reverse-proxy with `cdn_replace` + `cdn_base`.
@@ -81,7 +87,12 @@ Copy `config.example.php` → `config.php` (git-ignored). Every key has a sane d
 | `cdn_replace` / `cdn_base` | `''` | Rewrite image host to your own CDN/proxy |
 | `data_cdn` | `''` | URL of a `data.tar.gz` for `make data` (restore dataset without scraping) |
 | `cors_origin` | `*` | CORS for `/api/*`; set your domain to lock down, `''` to disable |
+| `oss_base` | `''` | Resource root for `image_mode=oss`, no trailing slash. Example shape: `https://img.example.com/uploads/banana` |
+| `watermark_text` | `AI 生成` | CSS watermark on images; `''` turns it off |
+| `clarity_id` / `la51_id` | `''` | Optional analytics IDs. Leave empty so a clone does not report into someone else's account |
 | `seo_title` / `seo_description` / `seo_keywords` | brand defaults | Homepage TDK; `{count}` is replaced with the indexed total. Detail pages auto-generate title/description (the **prompt text** becomes the meta description) and merge these brand keywords |
+
+Optional process environment (Redis and the traffic-panel clear password) lives in [`.env.example`](.env.example), not in `config.php`. Copy it to `.env` (git-ignored). `api/tj.php` reads that file; a real environment variable with the same name wins. There is **no default clear password** — `TRAFFIC_CLEAR_PWD` must be set or the clear action stays disabled.
 
 ### API
 
@@ -96,7 +107,7 @@ All endpoints return JSON and honour `cors_origin`.
 | `GET /api/models.php` | – | model distribution + media counts |
 | `GET /api/stats.php` | – | totals + top-50 tag cloud |
 
-> **Optional:** `api/tj.php` is a lightweight traffic panel (today/total PV & unique IP). It uses **Redis** if available and degrades to zero silently otherwise — the core gallery has **no required dependencies**. Configure via env: `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `TRAFFIC_CLEAR_PWD` (default clear-password is `123456` — **change it in production**).
+> **Optional:** `api/tj.php` is a lightweight traffic panel (today/total PV & unique IP). It uses **Redis** if available and degrades to zero silently otherwise — the core gallery has **no required dependencies**. Configure via `.env.example`: `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `TRAFFIC_CLEAR_PWD`. Clear stays off until `TRAFFIC_CLEAR_PWD` is set.
 
 <details><summary>Example: <code>/api/random.php?n=2</code></summary>
 
@@ -127,6 +138,7 @@ opennana/
 ├── lib.php              data-access layer (SQLite) + image-URL resolver
 ├── lib_md.php           Markdown/frontmatter parser + config loader
 ├── config.example.php   config template (copy to config.php)
+├── .env.example         optional Redis / traffic-panel env (copy to .env)
 ├── api/                 JSON API: list · search · detail · random · models · stats (+ tj.php traffic panel)
 ├── assets/              css · js · img (logo)
 ├── scripts/
@@ -137,7 +149,8 @@ opennana/
 │   ├── make_thumbs.php  pre-generate thumbnails (local mode)
 │   ├── fetch_data.php   restore data/ from data_cdn
 │   ├── watch.php        incremental daemon
-│   └── sync.sh          one-shot scrape → index
+│   ├── sync.sh          one-shot scrape → index
+│   └── smoke.sh         start check (`make smoke`)
 ├── Dockerfile · docker-entrypoint.sh · Makefile
 ├── data/   (git-ignored) one .md per prompt
 ├── images/ (git-ignored) originals — local mode only
@@ -203,19 +216,23 @@ This repository contains **engine code only** — no prompt data, no images. Dat
 ```bash
 git clone https://github.com/wuxiumu/ChiguaFun.git && cd ChiguaFun
 make setup           # 生成 config.php（默认 image_mode=cdn）
+make smoke           # 检查 PHP 与 HTTP，不需要数据集
 make scrape-sample   # 抓 20 条样本（CDN 模式，不下载图片）
 make index           # 建 SQLite 索引 + 静态首页
 make serve           # 打开 http://127.0.0.1:8765
+# 私有/局域网：    make serve HOST=0.0.0.0
 ```
 
 要全站：`make scrape`（≈2 万条，图片留在 CDN）再 `make index`。
 若你已把数据集打包上传到自己的 CDN，配好 `data_cdn` 后 `make data` 直接还原，无需抓取。
+还没建索引时站点也能打开，页面会说明下一步；`/api/*` 返回 `503 index_not_ready`。生成 sitemap / 分享链接前，把 `config.php` 的 `site_origin` 写成对外域名。反代终结 TLS 且 `site_origin` 留空时，会跟着 `Host` 和 `X-Forwarded-Proto`。
 
 ### 图片模式
 
 | 模式 | 图片 | 磁盘 | 用法 |
 |---|---|---|---|
 | **`cdn`**（默认） | 直连源站 CDN | 整站 ~50 MB | `scrape.py --cdn-only`，不下载 |
+| **`oss`** | 相对路径拼 `oss_base`（可选阿里云图片处理） | 图片在自己的桶上 | `config.php` 设置 `image_mode` 与 `oss_base` |
 | **`local`** | 下载原图 + 服务端缩略图 | ~20 GB | `scrape.py`（下载）+ `make thumbs` |
 
 改 `config.php → image_mode` 切换。cdn 模式下还能用 `cdn_replace` + `cdn_base` 把图片域名换成自己的图床/反代。
@@ -229,13 +246,14 @@ make serve           # 打开 http://127.0.0.1:8765
 | 命令 | 作用 |
 |---|---|
 | `make setup` | 生成 `config.php` |
+| `make smoke` | 语法检查并请求首页与 `/api/list.php`（不抓数据） |
 | `make scrape` / `scrape-sample` | 抓全站 / 抓 20 条样本（CDN 模式） |
 | `make data` | 从 `data_cdn` 下载数据包还原 `data/` |
 | `make index` | 建/增量更新索引（自动生成静态页） |
 | `make static` | 重新生成首页 index.html + sitemap |
 | `make pages` | 生成全部静态详情页 `p/<slug>.html`（SEO/中英 hreflang/提示词进描述） |
 | `make thumbs` | 预生成缩略图（仅 local 模式） |
-| `make serve` | 启动内置服务器 |
+| `make serve` | 启动内置服务器（默认 `127.0.0.1`；对外用 `HOST=0.0.0.0`） |
 | `make sync` / `watch` | 一键同步 / 增量守护 |
 | `make docker-build` / `docker-run` | 构建 / 运行容器 |
 | `make clean` / `clean-all` | 清理缓存 / 清理全部生成物 |
