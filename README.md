@@ -262,6 +262,30 @@ MIT © 2026 OpenNana Prompt Gallery contributors
 
 私有化部署、品牌白标、私有提示词库导入、CDN/广告位配置。加微信备注「提示词画廊」。
 
+## SEO / GEO 字段预留
+
+本项目已有 `config.php` 的 `seo_*` 与静态页 TDK；下表为统一商业页字段清单，便于多产品对齐。
+
+> 做成独立产品页 / 站群页时，模板与配置预留下列字段（先占位，落地页或导出 HTML 时填入）。
+
+| 字段 | 类型 | 用途 |
+|---|---|---|
+| `seo_title` | string | `<title>` / OG title |
+| `seo_description` | string | meta description |
+| `seo_keywords` | string[] | 可选关键词 |
+| `canonical_url` | url | 规范链接 |
+| `og_image` | url | 分享图 |
+| `robots` | string | 如 `index,follow` |
+| `json_ld_type` | string | 如 `SoftwareApplication` / `WebPage` / `FAQPage` |
+| `geo_region` | string | 地域页：省/州代码或名称 |
+| `geo_placename` | string | 城市/地标名（城市站、本地服务页） |
+| `geo_position` | string | 可选 lat,long |
+| `hreflang` | map | 多语言备用，如 `zh-CN` / `en` |
+| `site_name` | string | 品牌名（白标） |
+
+
+---
+
 ## 联系方式
 
 定制、演示或合作：
