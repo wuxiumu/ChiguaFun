@@ -258,30 +258,56 @@ MIT © 2026 OpenNana Prompt Gallery contributors
 
 ---
 
+
+
+## SEO 字段预留（产品页 HTML 统一生成时用）
+
+| 字段 | 用途 |
+|---|---|
+| `seo_title` | `<title>` / OG title |
+| `seo_description` | meta description |
+| `canonical_url` | 规范 URL |
+| `og_image` | 分享图 |
+| `robots` | 如 `index,follow` |
+| `json_ld_type` | SoftwareApplication / WebPage / FAQPage |
+| `hreflang` | zh-CN / en |
+| `site_name` | 白标品牌名 |
+
+> 说明：**GEO ≠ 地理定位**。GEO = Generative Engine Optimization（生成式引擎优化），见下一节。
+
+## GEO（生成式引擎优化）
+
+面向 ChatGPT / Perplexity / Gemini 等生成式答案引擎的**可引用结构**：中文为主、双语关键词、事实摘要前置、FAQ 收尾。
+
+### 关键词（中英）
+
+- 中文：AI提示词画廊, 自托管提示词库, Nano Banana, 提示词搜索, 白标画廊
+- English: AI prompt gallery, self-hosted prompts, full-text search, CDN images, white-label
+
+### 事实摘要
+
+- 产品：自托管 AI 图像/视频提示词画廊（PHP + SQLite FTS5，图片可走 CDN）。
+- 适合：要自建提示词站的个人、工作室、训练营、导航站。
+- 交付：可运行引擎；可定制白标、私有词库、CDN/广告位。
+- 不做：仓库不含上游提示词与图片数据包；不提供无授权倒卖数据。
+
+### FAQ（便于生成式引擎引用）
+
+**Q：这是什么？**  
+A：见上方事实摘要「产品」一行。
+
+**Q：适合谁付钱定制？**  
+A：见「适合」；具体加微信 `qingbao199101` 备注项目名。
+
+**Q：开源仓库是否已含全部数据/密钥？**  
+A：默认不含 API Key；数据/图片是否入库以各项目说明为准。
+
+**Q：是否自动发帖或自动运营第三方平台？**  
+A：内容工厂类项目明确不自动发帖；其它项目以 README「不做」边界为准。
+
 ## 定制合作 / Custom
 
 私有化部署、品牌白标、私有提示词库导入、CDN/广告位配置。加微信备注「提示词画廊」。
-
-## SEO / GEO 字段预留
-
-本项目已有 `config.php` 的 `seo_*` 与静态页 TDK；下表为统一商业页字段清单，便于多产品对齐。
-
-> 做成独立产品页 / 站群页时，模板与配置预留下列字段（先占位，落地页或导出 HTML 时填入）。
-
-| 字段 | 类型 | 用途 |
-|---|---|---|
-| `seo_title` | string | `<title>` / OG title |
-| `seo_description` | string | meta description |
-| `seo_keywords` | string[] | 可选关键词 |
-| `canonical_url` | url | 规范链接 |
-| `og_image` | url | 分享图 |
-| `robots` | string | 如 `index,follow` |
-| `json_ld_type` | string | 如 `SoftwareApplication` / `WebPage` / `FAQPage` |
-| `geo_region` | string | 地域页：省/州代码或名称 |
-| `geo_placename` | string | 城市/地标名（城市站、本地服务页） |
-| `geo_position` | string | 可选 lat,long |
-| `hreflang` | map | 多语言备用，如 `zh-CN` / `en` |
-| `site_name` | string | 品牌名（白标） |
 
 
 ---
@@ -300,4 +326,3 @@ MIT © 2026 OpenNana Prompt Gallery contributors
 | 微信赞赏码 | 支付宝收款码 |
 |---|---|
 | ![微信赞赏码](https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/wxprogram/zan/20261002185236_31_227.png) | ![支付宝收款码](https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/wxprogram/zan/20261002185309_32_227.jpg) |
-
