@@ -7,10 +7,57 @@
  *   /tj.php?act=clear&pwd=***  清空统计
  */
 
+/**
+ * 读取项目根 .env（不覆盖已经存在的环境变量）。
+ * PHP 内置服务器不会自动加载 .env；这里只服务流量面板，避免再引入依赖。
+ */
+function traffic_load_dotenv(string $path): void
+{
+    if (!is_file($path) || !is_readable($path)) {
+        return;
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES);
+    if ($lines === false) {
+        return;
+    }
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+        if (str_starts_with($line, 'export ')) {
+            $line = trim(substr($line, 7));
+        }
+        $eq = strpos($line, '=');
+        if ($eq === false) {
+            continue;
+        }
+        $key = trim(substr($line, 0, $eq));
+        if ($key === '' || getenv($key) !== false) {
+            continue;
+        }
+        $val = trim(substr($line, $eq + 1));
+        $len = strlen($val);
+        if ($len >= 2) {
+            $q = $val[0];
+            if (($q === '"' || $q === "'") && $val[$len - 1] === $q) {
+                $val = substr($val, 1, -1);
+            }
+        }
+        putenv($key . '=' . $val);
+        $_ENV[$key] = $val;
+    }
+}
+
+traffic_load_dotenv(dirname(__DIR__) . '/.env');
+
 $redisHost = getenv('REDIS_HOST') ?: '127.0.0.1';
 $redisPort = (int) (getenv('REDIS_PORT') ?: 6379);
-$redisPass = getenv('REDIS_PASSWORD') ?: null;
-$clearPwd  = getenv('TRAFFIC_CLEAR_PWD') ?: '123456';
+$redisPass = getenv('REDIS_PASSWORD');
+$redisPass = is_string($redisPass) && $redisPass !== '' ? $redisPass : null;
+// 不提供默认清空密码。未设置 TRAFFIC_CLEAR_PWD 时清空接口保持关闭。
+$clearPwd  = getenv('TRAFFIC_CLEAR_PWD');
+$clearPwd  = is_string($clearPwd) ? $clearPwd : '';
 
 $keyTodayPv = 'traffic:pv:today';
 $keyTotalPv = 'traffic:pv:total';
@@ -124,6 +171,15 @@ if ($act === 'clear') {
     $wantsJson = str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')
         || (string) ($_GET['format'] ?? '') === 'json';
 
+    if ($clearPwd === '') {
+        if ($wantsJson) {
+            traffic_json(['code' => -1, 'msg' => '未设置 TRAFFIC_CLEAR_PWD，清空已禁用'], 403);
+        }
+        http_response_code(403);
+        echo '未设置 TRAFFIC_CLEAR_PWD，清空已禁用';
+        exit;
+    }
+
     if ($pwd !== $clearPwd) {
         if ($wantsJson) {
             traffic_json(['code' => -1, 'msg' => '密码错误'], 403);
@@ -207,11 +263,15 @@ $redisOk = $redis !== null;
   </div>
   <div class="card" style="margin-bottom:16px">
     <div class="label" style="margin-bottom:8px">清空统计</div>
+    <?php if ($clearPwd === ''): ?>
+    <p class="meta" style="margin:0">清空已禁用。设置环境变量 <code>TRAFFIC_CLEAR_PWD</code> 后才会出现密码框（见 <code>.env.example</code>）。没有默认密码。</p>
+    <?php else: ?>
     <form method="get" onsubmit="return confirm('确认清空全部统计？')">
       <input type="hidden" name="act" value="clear">
       <input type="password" name="pwd" placeholder="清空密码" required>
       <button type="submit">清空</button>
     </form>
+    <?php endif; ?>
   </div>
   <p class="meta">接口 <code>tj.php?act=api</code> · 只读 <code>tj.php?act=api&amp;hit=0</code></p>
 </div>

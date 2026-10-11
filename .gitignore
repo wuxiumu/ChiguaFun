@@ -9,6 +9,9 @@
 # ---- 本地配置（含站点域名 / CDN，按 config.example.php 自建）----
 /config.php
 
+# ---- 可选环境变量（Redis / 流量面板密码；按 .env.example 自建）----
+.env
+
 # ---- 爬虫断点状态 ----
 /.state.json
 

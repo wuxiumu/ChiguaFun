@@ -7,13 +7,17 @@
  *
  * config.php 不提交到 git（已在 .gitignore）。
  * 不创建 config.php 也能跑：所有键都有内置默认值（image_mode=cdn，开箱即用）。
+ *
+ * 可选环境变量（Redis / 流量面板清空密码）见仓库根目录 .env.example，
+ * 复制为 .env 后由 api/tj.php 读取；不要把真实密码写进本文件或提交 .env。
  */
 
 return [
     // 站点对外的源，用于 SEO canonical / og:url / sitemap / 海报分享 / 绝对地址。
-    // 留空时：Web 请求自动用当前 Host，CLI（如 gen_static.php）回退到 http://localhost:8765。
+    // 留空时：Web 请求自动用当前 Host（识别 X-Forwarded-Proto），CLI 回退到 http://localhost:8765。
     // 生产环境务必填真实域名（改完后执行 make static 重新生成 index.html / sitemap）。
-    'site_origin' => 'https://banana.chiguashentan.com',
+    // 例：'https://gallery.example.com'
+    'site_origin' => '',
 
     // 图片模式（库内双轨：images=本地路径 + cdn_images=源站 CDN；改这一项即可切换）：
     //   'cdn'   —— md frontmatter 的 source_images（第三方 CDN 原图）
@@ -23,8 +27,9 @@ return [
     'image_mode'  => 'cdn',
 
     // 阿里云 OSS/CDN 资源根（仅 oss 模式），无尾斜杠。
-    // 绑定自定义 CDN 域名后改成 https://img.your-cdn.com/uploads/banana 即可。
-    'oss_base'    => 'https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/uploads/banana',
+    // 绑定自定义 CDN 域名后改成自己的根地址，无尾斜杠。留空表示未启用 OSS。
+    // 例：'https://img.example.com/uploads/banana'
+    'oss_base'    => '',
     'oss_process' => true,   // true：追加 ?x-oss-process=image/resize…/format,webp/quality,q_xx
     'oss_format'  => 'webp', // webp | jpg | png | ''（原格式）
     'oss_quality' => 75,     // 1–100；0 不传 quality
@@ -40,7 +45,7 @@ return [
 
     // API 跨域：允许浏览器跨域调用 /api/*。默认 '*'（开源演示方便）；
     // 生产可收紧为你的域名。设为 '' 则不下发 CORS 头（同源）。
-    'cors_origin' => 'https://banana.chiguashentan.com',
+    'cors_origin' => '*',
 
     // 图片水印文字（用 CSS 叠加在所有图片底部居中处，白色半透明）。
     // 设为 '' 关闭水印。改成任意文案即可自定义，如 'AI 生成 · 仅供演示'。

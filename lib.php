@@ -27,7 +27,7 @@ function db_exists(): bool
 function db(): PDO
 {
     if (!db_exists()) {
-        throw new RuntimeException('索引尚未生成，请先运行： php build_index.php');
+        throw new RuntimeException('索引尚未生成，请先在项目根运行： make index（或 php scripts/build_index.php）');
     }
     if ($GLOBALS['__db'] === null) {
         $pdo = new PDO('sqlite:' . DB_FILE, null, null, [

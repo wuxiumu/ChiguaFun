@@ -3,8 +3,8 @@
  * 🍉 ChiguaNana 提示词库 - 静态化构建
  *
  * 用法：
- *   php gen_static.php           # 生成 index.html + sitemap.xml + robots.txt
- *   php gen_static.php --nuke    # 重新生成（清空后再写）
+ *   php scripts/gen_static.php           # 生成 index.html + sitemap.xml + robots.txt
+ *   php scripts/gen_static.php --nuke    # 重新生成（清空后再写）
  *
  * 产物：
  *   ./index.html                 # 首页（含首批 36 条 + 完整 SEO）

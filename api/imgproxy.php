@@ -17,7 +17,8 @@ require_once __DIR__ . '/_common.php';
 /** 允许的图片主机：内置 + config.oss_base / cdn_base / cdn_replace 的 host */
 function imgproxy_allowed_hosts(): array
 {
-    $hosts = ['img.opennana.com', 'chiguashentan-test.oss-cn-beijing.aliyuncs.com'];
+    // 上游 CDN。客户自己的图床写在 oss_base / cdn_base / cdn_replace，不把某个部署的桶写死在这里。
+    $hosts = ['img.opennana.com'];
     foreach (['oss_base', 'cdn_base', 'cdn_replace'] as $k) {
         $u = trim((string)config($k));
         if ($u === '') {
@@ -60,7 +61,7 @@ if (!isset($mimeMap[$ext])) {
 
 $ctx = stream_context_create(['http' => [
     'timeout'         => 20,
-    'header'          => "User-Agent: Mozilla/5.0 (opennana-poster)\r\nReferer: https://banana.chiguashentan.com/\r\n",
+    'header'          => "User-Agent: Mozilla/5.0 (opennana-poster)\r\nReferer: " . str_replace(["\r", "\n"], '', site_origin()) . "/\r\n",
     'max_redirects'   => 3,
     'ignore_errors'   => true,
 ]]);

@@ -4,8 +4,9 @@ images/
 thumbs/
 cache/
 
-# 本地配置与状态
+# 本地配置与状态（运行时用 --env-file / 挂载，不要打进镜像）
 config.php
+.env
 .state.json
 
 # 版本库与生成物

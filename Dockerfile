@@ -22,7 +22,7 @@ RUN set -eux; \
 
 WORKDIR /app
 COPY . /app
-RUN chmod +x docker-entrypoint.sh scripts/sync.sh
+RUN chmod +x docker-entrypoint.sh scripts/sync.sh scripts/smoke.sh
 
 EXPOSE 8765
 ENTRYPOINT ["./docker-entrypoint.sh"]

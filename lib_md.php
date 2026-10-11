@@ -71,8 +71,25 @@ function site_logo_html(): string
 
 /**
  * 站点源：config.site_origin 优先，其次按请求 Host 自动探测，CLI 最后回退 localhost。
- * 始终以无尾斜杠返回。生产请在 config.php 填写真实域名（如 https://banana.chiguashentan.com）。
+ * 始终以无尾斜杠返回。生产请在 config.php 填写真实域名（如 https://gallery.example.com）。
+ * 反代终止 TLS 时识别 X-Forwarded-Proto / X-Forwarded-Ssl，避免 canonical 被写成 http。
  */
+function request_is_https(): bool
+{
+    $https = strtolower((string)($_SERVER['HTTPS'] ?? ''));
+    if ($https !== '' && $https !== 'off') {
+        return true;
+    }
+    if ((string)($_SERVER['SERVER_PORT'] ?? '') === '443') {
+        return true;
+    }
+    $fwd = strtolower(trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0]));
+    if ($fwd === 'https') {
+        return true;
+    }
+    return strtolower((string)($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '')) === 'on';
+}
+
 function site_origin(): string
 {
     $o = rtrim((string)config('site_origin'), '/');
@@ -80,8 +97,8 @@ function site_origin(): string
         return $o;
     }
     if (PHP_SAPI !== 'cli' && !empty($_SERVER['HTTP_HOST'])) {
-        $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-        return ($https ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+        $host = str_replace(["\r", "\n"], '', (string)$_SERVER['HTTP_HOST']);
+        return (request_is_https() ? 'https' : 'http') . '://' . $host;
     }
     // 仅本地 CLI 兜底；部署后务必配置 site_origin，否则 sitemap/og 会写成 localhost
     return 'http://localhost:8765';
