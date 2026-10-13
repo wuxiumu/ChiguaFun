@@ -55,6 +55,54 @@ function config(?string $key = null)
 }
 
 /**
+ * 当前 PDO/SQLite 是否支持 FTS5（线上部分 PHP 未编译该模块）。
+ * 探测失败时返回 false，调用方应改走 LIKE，避免 Fatal。
+ */
+function sqlite_has_fts5(?PDO $pdo = null): bool
+{
+    static $cache = [];
+    try {
+        $db = $pdo;
+        if ($db === null) {
+            if (!function_exists('db_exists') || !db_exists()) {
+                return false;
+            }
+            $db = db();
+        }
+        $key = spl_object_id($db);
+        if (array_key_exists($key, $cache)) {
+            return $cache[$key];
+        }
+        // 以能否建与线上一致的 trigram FTS5 为准
+        $db->exec("CREATE VIRTUAL TABLE IF NOT EXISTS __fts5_probe USING fts5(x, tokenize='trigram')");
+        $db->exec('DROP TABLE IF EXISTS __fts5_probe');
+        return $cache[$key] = true;
+    } catch (Throwable $e) {
+        if (isset($key)) {
+            $cache[$key] = false;
+        }
+        return false;
+    }
+}
+
+/**
+ * LIKE 搜索条件（无 FTS5 或短词时使用）。含标题/简介/标签/模型/提示词正文。
+ */
+function sql_like_search_clause(string $param = ':lk'): string
+{
+    return '('
+        . "i.title LIKE {$param} ESCAPE '\\' OR i.descr LIKE {$param} ESCAPE '\\' "
+        . "OR i.tags LIKE {$param} ESCAPE '\\' OR i.model LIKE {$param} ESCAPE '\\' "
+        . "OR i.id IN (SELECT item_id FROM ptext WHERE body LIKE {$param} ESCAPE '\\')"
+        . ')';
+}
+
+function sql_like_bind_value(string $q): string
+{
+    return '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
+}
+
+/**
  * 站点展示名（分享海报 / OG / JSON-LD 等纯文本场景）。
  * 🍉 = 吃瓜彩蛋，ChiguaNana = 吃瓜 × Nano Banana。
  */

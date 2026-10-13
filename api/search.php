@@ -5,7 +5,7 @@
  * GET /api/search.php?q=关键词&page=1&limit=20&model=X
  *
  * 行为类似 list.php，但强制要求 q（缺失返回 400），专给搜索框用。
- * q >= 3 字符走 SQLite FTS5(trigram) 全文检索，更短的回退 LIKE。
+ * q >= 3 且 SQLite 支持 FTS5 时走全文检索；否则（含无 FTS5 环境）回退 LIKE。
  */
 
 declare(strict_types=1);

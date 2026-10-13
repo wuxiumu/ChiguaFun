@@ -49,6 +49,12 @@ if ($full) {
     $db->exec('DROP TABLE IF EXISTS fts');
 }
 
+$hasFts = sqlite_has_fts5($db);
+if (!$hasFts) {
+    echo "提示：当前 PHP/SQLite 无 FTS5，全文索引已跳过，搜索将使用 LIKE（可用但较慢）。\n";
+    echo "      若需 FTS5：更换带 ENABLE_FTS5 的 libsqlite3 / PHP 构建。\n";
+}
+
 $db->exec(<<<'SQL'
 CREATE TABLE IF NOT EXISTS items (
     id          INTEGER PRIMARY KEY,
@@ -101,8 +107,10 @@ CREATE TABLE IF NOT EXISTS ptext (
 );
 SQL);
 
-// trigram 分词：对中文子串检索友好（要求查询词 >= 3 字符，更短的走 LIKE 回退）
-$db->exec("CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5(body, item_id UNINDEXED, tokenize='trigram')");
+// FTS5 trigram：有模块才建；无 FTS5 时搜索走 LIKE（见 lib.php build_where）
+if ($hasFts) {
+    $db->exec("CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5(body, item_id UNINDEXED, tokenize='trigram')");
+}
 
 /** 读封面图宽高（只读文件头，很快）。读不到返回 0,0 */
 function cover_size(string $rel): array
@@ -152,9 +160,9 @@ $insItem = $db->prepare(
        reviewed_at=excluded.reviewed_at, created_at=excluded.created_at, file=excluded.file, mtime=excluded.mtime'
 );
 $delText = $db->prepare('DELETE FROM ptext   WHERE item_id = ?');
-$delFts  = $db->prepare('DELETE FROM fts     WHERE item_id = ?');
 $insText = $db->prepare('INSERT OR REPLACE INTO ptext (item_id,seq,label,body,chars) VALUES (?,?,?,?,?)');
-$insFts  = $db->prepare('INSERT INTO fts (body,item_id) VALUES (?,?)');
+$delFts  = $hasFts ? $db->prepare('DELETE FROM fts WHERE item_id = ?') : null;
+$insFts  = $hasFts ? $db->prepare('INSERT INTO fts (body,item_id) VALUES (?,?)') : null;
 
 $t0     = microtime(true);
 $done   = 0;
@@ -207,7 +215,9 @@ foreach ($todo as [$path, $base, $mt]) {
     ]);
 
     $delText->execute([$r['id']]);
-    $delFts->execute([$r['id']]);
+    if ($delFts) {
+        $delFts->execute([$r['id']]);
+    }
 
     // 检索语料：标题 + 简介 + 模型 + 标签（+ 提示词正文）
     $buf = $r['title'] . ' ' . $r['desc'] . ' ' . $r['model'] . ' ' . implode(' ', $r['tags']);
@@ -217,7 +227,9 @@ foreach ($todo as [$path, $base, $mt]) {
             $buf .= ' ' . $p['text'];
         }
     }
-    $insFts->execute([$buf, $r['id']]);
+    if ($insFts) {
+        $insFts->execute([$buf, $r['id']]);
+    }
 
     $done++;
     if ($done % 500 === 0) {
@@ -238,20 +250,26 @@ if ($prune) {
         if (!in_array($row['file'], $live, true)) {
             $db->prepare('DELETE FROM items WHERE id = ?')->execute([$row['id']]);
             $db->prepare('DELETE FROM ptext WHERE item_id = ?')->execute([$row['id']]);
-            $db->prepare('DELETE FROM fts   WHERE item_id = ?')->execute([$row['id']]);
+            if ($hasFts) {
+                $db->prepare('DELETE FROM fts WHERE item_id = ?')->execute([$row['id']]);
+            }
             $removed++;
         }
     }
     $db->commit();
 }
 
-$db->exec('DELETE FROM fts WHERE item_id NOT IN (SELECT id FROM items)');
+if ($hasFts) {
+    $db->exec('DELETE FROM fts WHERE item_id NOT IN (SELECT id FROM items)');
+}
 
 // 全量优化代价是 O(整表)，小改动时不跑，避免增量同步被拖慢
 $heavy = $full || $done > 1000;
 if ($heavy) {
-    echo "  整理全文索引…\n";
-    $db->exec("INSERT INTO fts(fts) VALUES('optimize')");
+    if ($hasFts) {
+        echo "  整理全文索引…\n";
+        $db->exec("INSERT INTO fts(fts) VALUES('optimize')");
+    }
     $db->exec('ANALYZE');
 }
 

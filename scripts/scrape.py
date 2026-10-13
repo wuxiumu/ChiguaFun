@@ -23,11 +23,10 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.parse
-import urllib.request
-import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 API_BASE = "https://api.opennana.com"
@@ -54,23 +53,37 @@ STATE_FILE = os.path.join(BASE_DIR, ".state.json")
 # HTTP
 # --------------------------------------------------------------------------
 def http_get(url, retries=3, timeout=30, binary=False):
-    """带重试的 GET。返回 (ok, bytes_or_None, err)"""
+    """带重试的 GET。返回 (ok, bytes_or_None, err)
+
+    用 curl --max-time 做硬超时。urllib 走本地代理时，SSL 读可能一直堵住，
+    urlopen 的 timeout 不会生效。
+    """
+    cmd = [
+        "curl", "-fsS", "--location", "--compressed",
+        "--max-time", str(timeout),
+        "-A", HEADERS["User-Agent"],
+        "-e", HEADERS["Referer"],
+        "-H", "Origin: " + HEADERS["Origin"],
+        "-H", "Accept: " + HEADERS["Accept"],
+        url,
+    ]
     for attempt in range(1, retries + 1):
         try:
-            req = urllib.request.Request(url, headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                data = resp.read()
-                return True, data, None
-        except urllib.error.HTTPError as e:
-            if e.code in (403, 429) and attempt < retries:
-                time.sleep(2 * attempt)
-                continue
-            return False, None, f"HTTP {e.code}"
-        except Exception as e:  # noqa: BLE001
+            proc = subprocess.run(cmd, capture_output=True, timeout=timeout + 5)
+        except subprocess.TimeoutExpired:
             if attempt < retries:
                 time.sleep(2 * attempt)
                 continue
-            return False, None, str(e)
+            return False, None, "timeout"
+        if proc.returncode == 0:
+            return True, proc.stdout, None
+        err = (proc.stderr or b"").decode("utf-8", "replace").strip()
+        err = err.replace("\n", " ")[:200] or f"curl exit {proc.returncode}"
+        retryable = proc.returncode in (7, 28, 35, 52, 56) or " 403" in err or " 429" in err
+        if retryable and attempt < retries:
+            time.sleep(2 * attempt)
+            continue
+        return False, None, err
     return False, None, "retry exhausted"
 
 
@@ -256,27 +269,41 @@ def build_markdown(d, local_images):
 # --------------------------------------------------------------------------
 # 主流程
 # --------------------------------------------------------------------------
-def collect_items(target, page_size, extra):
-    """按需拉取列表，直到凑够 target 条（None=全部）"""
+def collect_items(target, page_size, extra, done_ids=None):
+    """按需拉取列表，直到凑够 target 条（None=全部）。
+
+    done_ids 给定时，列表按 reviewed_at 倒序，遇到整页都已同步就停止翻页。
+    若此时新增条数明显少于「线上总数 - 本地已完成」，说明新数据不在列表前部，改为翻完。
+    """
     items, page = [], 1
     total = None
+    stop_early = done_ids is not None
     while True:
         data, err = fetch_list(page, page_size, **extra)
         if err:
-            print(f"  [!] 列表第 {page} 页失败: {err}")
+            print(f"  [!] 列表第 {page} 页失败: {err}", flush=True)
             break
         batch = data.get("items") or []
         if total is None:
             total = data.get("pagination", {}).get("total", 0)
-            print(f"  站点共 {total} 条记录")
+            print(f"  站点共 {total} 条记录", flush=True)
         items += batch
+        print(f"  列表第 {page} 页，本页 {len(batch)}，累计 {len(items)}/{total}", flush=True)
         if target is not None and len(items) >= target:
             items = items[:target]
             break
+        if stop_early and batch and all(it.get("id") in done_ids for it in batch):
+            fresh = sum(1 for it in items if it.get("id") not in done_ids)
+            gap = (total or 0) - len(done_ids)
+            print(f"  已遇到整页旧数据，列表前部新增 {fresh} 条（总数差额 {gap}）", flush=True)
+            if fresh + 50 >= gap:
+                break
+            print("  新增明显少于差额，继续翻完剩余页", flush=True)
+            stop_early = False
         if not data.get("pagination", {}).get("has_more") or not batch:
             break
         page += 1
-        time.sleep(0.3)
+        time.sleep(0.15)
     return items
 
 
@@ -336,12 +363,12 @@ def main():
     target = None if args.all else args.limit
     extra = {"search": args.search, "media_type": args.media_type}
 
-    print(f"[1/3] 拉取列表… (目标 {target or '全部'} 条)")
-    items = collect_items(target, args.page_size, extra)
-    print(f"      拿到 {len(items)} 条")
-
     state = load_state()
     done = set(state.get("done", []))
+
+    print(f"[1/3] 拉取列表… (目标 {target or '全部'} 条)")
+    items = collect_items(target, args.page_size, extra, done if args.all else None)
+    print(f"      拿到 {len(items)} 条")
     todo = [it for it in items if it.get("id") not in done]
     if len(items) != len(todo):
         print(f"      跳过已完成的 {len(items) - len(todo)} 条")

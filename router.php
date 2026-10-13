@@ -101,6 +101,7 @@ header('X-Content-Type-Options: nosniff');
 $size = filesize($fs);
 header('Content-Length: ' . $size);
 
+// 简单 ETag（基于 mtime + size）—— 配合客户端 304
 $etag = '"' . md5($fs . '|' . filemtime($fs) . '|' . $size) . '"';
 header('ETag: ' . $etag);
 if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && trim($_SERVER['HTTP_IF_NONE_MATCH']) === $etag) {

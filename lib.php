@@ -73,14 +73,14 @@ function build_where(string $q, string $model, array &$p): string
         $p[':model']   = $model;
     }
     if ($q !== '') {
-        if (mb_strlen($q) >= 3) {
-            // FTS5 trigram：要求 >=3 字符，短词走下面 LIKE
+        $useFts = mb_strlen($q) >= 3 && sqlite_has_fts5();
+        if ($useFts) {
+            // FTS5 trigram：要求 >=3 字符
             $w[]     = 'i.id IN (SELECT item_id FROM fts WHERE body MATCH :q)';
             $p[':q'] = '"' . str_replace('"', '""', $q) . '"';
         } else {
-            $w[]      = '(i.title LIKE :lk ESCAPE \'\\\' OR i.descr LIKE :lk ESCAPE \'\\\' '
-                      . 'OR i.tags LIKE :lk ESCAPE \'\\\' OR i.model LIKE :lk ESCAPE \'\\\')';
-            $p[':lk'] = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
+            $w[]      = sql_like_search_clause(':lk');
+            $p[':lk'] = sql_like_bind_value($q);
         }
     }
     return $w ? 'WHERE ' . implode(' AND ', $w) : '';
@@ -102,16 +102,16 @@ function query_items(string $q, string $model, int $limit, int $offset): array
         $st->execute();
         return $st->fetchAll();
     } catch (PDOException $e) {
-        // FTS 查询可能因特殊字符失败 -> 降级为 LIKE
-        if ($q !== '' && mb_strlen($q) >= 3) {
+        // FTS 查询可能因特殊字符 / 无模块失败 -> 降级为 LIKE
+        if ($q !== '') {
             $bind = [];
             $where = [];
             if ($model !== '') {
-                $where[]      = 'i.model = :model';
+                $where[]        = 'i.model = :model';
                 $bind[':model'] = $model;
             }
-            $where[]    = '(i.title LIKE :lk ESCAPE \'\\\' OR i.descr LIKE :lk ESCAPE \'\\\')';
-            $bind[':lk'] = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
+            $where[]     = sql_like_search_clause(':lk');
+            $bind[':lk'] = sql_like_bind_value($q);
             $sql = 'SELECT i.* FROM items i WHERE ' . implode(' AND ', $where)
                  . ' ORDER BY i.reviewed_at DESC, i.id DESC LIMIT :lim OFFSET :off';
             $st = $db->prepare($sql);
@@ -129,7 +129,7 @@ function query_items(string $q, string $model, int $limit, int $offset): array
 
 function count_items(string $q, string $model): int
 {
-    return (int)memo("cnt:$q|$model", static function () use ($q, $model) {
+    return (int)memo("cnt:$q|$model|" . (sqlite_has_fts5() ? 'fts' : 'like'), static function () use ($q, $model) {
         $p   = [];
         $sql = 'SELECT COUNT(*) FROM items i ' . build_where($q, $model, $p);
         $st  = db()->prepare($sql);
@@ -138,10 +138,27 @@ function count_items(string $q, string $model): int
         }
         try {
             $st->execute();
+            return (int)$st->fetchColumn();
         } catch (PDOException $e) {
-            return 0;
+            if ($q === '') {
+                return 0;
+            }
+            // FTS 失败时 LIKE 重计
+            $bind = [];
+            $where = [];
+            if ($model !== '') {
+                $where[]        = 'i.model = :model';
+                $bind[':model'] = $model;
+            }
+            $where[]     = sql_like_search_clause(':lk');
+            $bind[':lk'] = sql_like_bind_value($q);
+            $st = db()->prepare('SELECT COUNT(*) FROM items i WHERE ' . implode(' AND ', $where));
+            foreach ($bind as $k => $v) {
+                $st->bindValue($k, $v);
+            }
+            $st->execute();
+            return (int)$st->fetchColumn();
         }
-        return (int)$st->fetchColumn();
     }, 15);
 }
 
