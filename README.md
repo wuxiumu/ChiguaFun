@@ -1,4 +1,4 @@
-<div align="center">
+
 
 # 🍌 OpenNana Prompt Gallery
 
@@ -6,7 +6,7 @@
 
 一个自托管的 AI 提示词画廊：收录 2 万+ 条 ChatGPT / Nano Banana / Seedance 等模型的图像与视频提示词，零第三方依赖、图片走 CDN、毫秒级全文检索。
 
-[**English**](#-english) · [**中文**](#-中文)
+**[English](#-english)** · **[中文](#-中文)**
 
 ![PHP](https://img.shields.io/badge/PHP-%E2%89%A58.1-777bb3?logo=php&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3-3776ab?logo=python&logoColor=white)
@@ -15,18 +15,21 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![No deps](https://img.shields.io/badge/dependencies-none-brightgreen)
 
-<!-- 👇 首页截图：把下面一行取消注释，并把 src 换成你托管在 CDN 上的截图（建议 1200px 宽的 GIF/截图，对 star 转化帮助极大）
-<img src="https://your-cdn.example.com/opennana/screenshot.png" alt="OpenNana gallery screenshot" width="720" />
--->
 
-<!-- 👇 Live Demo：部署后把占位地址换成你的真实站点 -->
-**🔗 Live Demo:** _（部署后填写你的站点地址）_
 
-</div>
+
+
+**🔗 Live Demo:** [https://banana.chiguashentan.com](https://banana.chiguashentan.com)
+
+
 
 ---
 
+
+
 ## ✨ English
+
+
 
 ### Why
 
@@ -39,6 +42,8 @@ Most "prompt galleries" are either closed SaaS or heavy Next.js apps that need a
 - **Millisecond search** — SQLite **FTS5 (trigram)** full-text index over titles, tags and prompt bodies; CJK-friendly.
 - **SEO static generation** — one command emits a fully server-rendered `index.html` + `sitemap.xml` + JSON-LD.
 - **One-command bootstrap** — scrape → index → serve, or run it in Docker.
+
+
 
 ### Quick start
 
@@ -61,12 +66,16 @@ make docker-build
 make docker-run      # http://localhost:8765
 ```
 
+
+
 ### Image modes
 
-| Mode | Images | Disk | How |
-|---|---|---|---|
-| **`cdn`** (default) | hot-linked from the source CDN | ~50 MB total | `scrape.py --cdn-only`, no download |
-| **`local`** | downloaded + server-generated thumbnails | ~20 GB | `scrape.py` (downloads), `make thumbs` |
+
+| Mode            | Images                                   | Disk         | How                                    |
+| --------------- | ---------------------------------------- | ------------ | -------------------------------------- |
+| `cdn` (default) | hot-linked from the source CDN           | ~50 MB total | `scrape.py --cdn-only`, no download    |
+| `local`         | downloaded + server-generated thumbnails | ~20 GB       | `scrape.py` (downloads), `make thumbs` |
+
 
 Switch via `config.php → image_mode`. In `cdn` mode you can also rewrite the image host to your own CDN/reverse-proxy with `cdn_replace` + `cdn_base`.
 
@@ -74,31 +83,37 @@ Switch via `config.php → image_mode`. In `cdn` mode you can also rewrite the i
 
 Copy `config.example.php` → `config.php` (git-ignored). Every key has a sane default, so it runs even without one.
 
-| Key | Default | Purpose |
-|---|---|---|
-| `site_origin` | `''` (auto-detect) | Canonical/OG/sitemap base URL — **set your real domain in production** |
-| `image_mode` | `cdn` | `cdn` = hot-link originals · `local` = downloaded + thumbnails |
-| `cdn_replace` / `cdn_base` | `''` | Rewrite image host to your own CDN/proxy |
-| `data_cdn` | `''` | URL of a `data.tar.gz` for `make data` (restore dataset without scraping) |
-| `cors_origin` | `*` | CORS for `/api/*`; set your domain to lock down, `''` to disable |
-| `seo_title` / `seo_description` / `seo_keywords` | brand defaults | Homepage TDK; `{count}` is replaced with the indexed total. Detail pages auto-generate title/description (the **prompt text** becomes the meta description) and merge these brand keywords |
+
+| Key                                              | Default            | Purpose                                                                                                                                                                                    |
+| ------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `site_origin`                                    | `''` (auto-detect) | Canonical/OG/sitemap base URL — **set your real domain in production**                                                                                                                     |
+| `image_mode`                                     | `cdn`              | `cdn` = hot-link originals · `local` = downloaded + thumbnails                                                                                                                             |
+| `cdn_replace` / `cdn_base`                       | `''`               | Rewrite image host to your own CDN/proxy                                                                                                                                                   |
+| `data_cdn`                                       | `''`               | URL of a `data.tar.gz` for `make data` (restore dataset without scraping)                                                                                                                  |
+| `cors_origin`                                    | `*`                | CORS for `/api/*`; set your domain to lock down, `''` to disable                                                                                                                           |
+| `seo_title` / `seo_description` / `seo_keywords` | brand defaults     | Homepage TDK; `{count}` is replaced with the indexed total. Detail pages auto-generate title/description (the **prompt text** becomes the meta description) and merge these brand keywords |
+
+
+
 
 ### API
 
 All endpoints return JSON and honour `cors_origin`.
 
-| Endpoint | Params | Returns |
-|---|---|---|
-| `GET /api/list.php` | `page, limit, model, q` | paginated cards + model facets |
-| `GET /api/search.php` | `q` (required), `page, limit, model` | FTS5 full-text search |
-| `GET /api/detail.php` | `slug` | full prompt body, images, videos, meta |
-| `GET /api/random.php` | `n` (1–60), `model` | 🎲 random prompts ("I'm feeling lucky") |
-| `GET /api/models.php` | – | model distribution + media counts |
-| `GET /api/stats.php` | – | totals + top-50 tag cloud |
+
+| Endpoint              | Params                               | Returns                                 |
+| --------------------- | ------------------------------------ | --------------------------------------- |
+| `GET /api/list.php`   | `page, limit, model, q`              | paginated cards + model facets          |
+| `GET /api/search.php` | `q` (required), `page, limit, model` | FTS5 full-text search                   |
+| `GET /api/detail.php` | `slug`                               | full prompt body, images, videos, meta  |
+| `GET /api/random.php` | `n` (1–60), `model`                  | 🎲 random prompts ("I'm feeling lucky") |
+| `GET /api/models.php` | –                                    | model distribution + media counts       |
+| `GET /api/stats.php`  | –                                    | totals + top-50 tag cloud               |
+
 
 > **Optional:** `api/tj.php` is a lightweight traffic panel (today/total PV & unique IP). It uses **Redis** if available and degrades to zero silently otherwise — the core gallery has **no required dependencies**. Configure via env: `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `TRAFFIC_CLEAR_PWD` (default clear-password is `123456` — **change it in production**).
 
-<details><summary>Example: <code>/api/random.php?n=2</code></summary>
+Example: `/api/random.php?n=2`
 
 ```json
 {
@@ -115,7 +130,8 @@ All endpoints return JSON and honour `cors_origin`.
   ]
 }
 ```
-</details>
+
+
 
 ### Project layout
 
@@ -146,6 +162,8 @@ opennana/
 └── cache/  (git-ignored) SQLite index + memoization
 ```
 
+
+
 ### Data source & scraping
 
 The gallery reads the same public, auth-free endpoints the upstream front-end uses:
@@ -163,10 +181,14 @@ Two gotchas: the API host is `api.opennana.com` (the main domain 404s on `/api/*
 - **Static first paint**: `index.html` ships the first 36 cards server-rendered; JS hydrates paging/search.
 - **gzip + long-cache + ETag 304** via `router.php`; lazy-loaded images with fade-in and broken-image fallback.
 
+
+
 ### Third-party credits
 
-- [`qrcode-generator`](https://github.com/kazuhikoarase/qrcode-generator) (MIT) — bundled at `assets/js/qrcode.js`, draws the poster/share QR codes locally (no network).
+- `[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator)` (MIT) — bundled at `assets/js/qrcode.js`, draws the poster/share QR codes locally (no network).
 - Everything else is hand-rolled vanilla PHP/JS/CSS — **no framework, no build step**.
+
+
 
 ### Static site & SEO
 
@@ -175,16 +197,22 @@ Two gotchas: the API host is `api.opennana.com` (the main domain 404s on `/api/*
 - Homepage `index.html` + `sitemap.xml` / `sitemap-items.xml` / `robots.txt` come from `make static`; homepage TDK is configurable (`seo_*`, `{count}` placeholder).
 - Detail URLs are pretty + static: `/p/<slug>.html`. If a static page is missing, the router falls back to the dynamic renderer, so links never 404.
 
+
+
 ### ⚖️ Disclaimer
 
 This repository contains **engine code only** — no prompt data, no images. Data is fetched at run time by `scrape.py` from publicly accessible endpoints. All prompts and images belong to their original authors and [opennana.com](https://opennana.com); this project is for **learning and personal self-hosting**. Please respect the upstream site's terms and rate-limit your scraping. Remove your instance if requested.
 
 ---
 
+
+
 ## 🇨🇳 中文
 
-> **2 万+ AI 提示词自托管画廊**：CDN 出图、毫秒搜索、可静态 SEO，可按品牌白标交付。  
+> **2 万+ AI 提示词自托管画廊**：CDN 出图、毫秒搜索、可静态 SEO，可按品牌白标交付。
 > **定制 / 合作：** 微信 **qingbao199101**（备注：提示词站）｜邮箱 [wuxiumu@163.com](mailto:wuxiumu@163.com)
+
+
 
 ### 这是什么
 
@@ -197,6 +225,8 @@ This repository contains **engine code only** — no prompt data, no images. Dat
 - **毫秒级全文检索**：SQLite **FTS5(trigram)**，对中文子串友好，覆盖标题/标签/提示词正文。
 - **SEO 静态化**：一条命令生成服务端渲染的 `index.html` + `sitemap.xml` + JSON-LD。
 - **一键起步 / Docker**：抓取 → 建索引 → 起服务，或 `make docker-run`。
+
+
 
 ### 快速开始
 
@@ -213,10 +243,12 @@ make serve           # 打开 http://127.0.0.1:8765
 
 ### 图片模式
 
-| 模式 | 图片 | 磁盘 | 用法 |
-|---|---|---|---|
-| **`cdn`**（默认） | 直连源站 CDN | 整站 ~50 MB | `scrape.py --cdn-only`，不下载 |
-| **`local`** | 下载原图 + 服务端缩略图 | ~20 GB | `scrape.py`（下载）+ `make thumbs` |
+
+| 模式        | 图片            | 磁盘        | 用法                             |
+| --------- | ------------- | --------- | ------------------------------ |
+| `cdn`（默认） | 直连源站 CDN      | 整站 ~50 MB | `scrape.py --cdn-only`，不下载     |
+| `local`   | 下载原图 + 服务端缩略图 | ~20 GB    | `scrape.py`（下载）+ `make thumbs` |
+
 
 改 `config.php → image_mode` 切换。cdn 模式下还能用 `cdn_replace` + `cdn_base` 把图片域名换成自己的图床/反代。
 
@@ -226,19 +258,23 @@ make serve           # 打开 http://127.0.0.1:8765
 
 ### 命令速查（`make help`）
 
-| 命令 | 作用 |
-|---|---|
-| `make setup` | 生成 `config.php` |
-| `make scrape` / `scrape-sample` | 抓全站 / 抓 20 条样本（CDN 模式） |
-| `make data` | 从 `data_cdn` 下载数据包还原 `data/` |
-| `make index` | 建/增量更新索引（自动生成静态页） |
-| `make static` | 重新生成首页 index.html + sitemap |
-| `make pages` | 生成全部静态详情页 `p/<slug>.html`（SEO/中英 hreflang/提示词进描述） |
-| `make thumbs` | 预生成缩略图（仅 local 模式） |
-| `make serve` | 启动内置服务器 |
-| `make sync` / `watch` | 一键同步 / 增量守护 |
-| `make docker-build` / `docker-run` | 构建 / 运行容器 |
-| `make clean` / `clean-all` | 清理缓存 / 清理全部生成物 |
+
+| 命令                                 | 作用                                                |
+| ---------------------------------- | ------------------------------------------------- |
+| `make setup`                       | 生成 `config.php`                                   |
+| `make scrape` / `scrape-sample`    | 抓全站 / 抓 20 条样本（CDN 模式）                            |
+| `make data`                        | 从 `data_cdn` 下载数据包还原 `data/`                      |
+| `make index`                       | 建/增量更新索引（自动生成静态页）                                 |
+| `make static`                      | 重新生成首页 index.html + sitemap                       |
+| `make pages`                       | 生成全部静态详情页 `p/<slug>.html`（SEO/中英 hreflang/提示词进描述） |
+| `make thumbs`                      | 预生成缩略图（仅 local 模式）                                |
+| `make serve`                       | 启动内置服务器                                           |
+| `make sync` / `watch`              | 一键同步 / 增量守护                                       |
+| `make docker-build` / `docker-run` | 构建 / 运行容器                                         |
+| `make clean` / `clean-all`         | 清理缓存 / 清理全部生成物                                    |
+
+
+
 
 ### ⚖️ 免责声明
 
@@ -246,7 +282,7 @@ make serve           # 打开 http://127.0.0.1:8765
 
 ---
 
-<div align="center">
+
 
 **If this saves you from hosting 20 GB of images, give it a ⭐ — it really helps.**
 
@@ -254,7 +290,7 @@ make serve           # 打开 http://127.0.0.1:8765
 
 MIT © 2026 OpenNana Prompt Gallery contributors
 
-</div>
+
 
 ---
 
@@ -262,18 +298,22 @@ MIT © 2026 OpenNana Prompt Gallery contributors
 
 ## SEO 字段预留（产品页 HTML 统一生成时用）
 
-| 字段 | 用途 |
-|---|---|
-| `seo_title` | `<title>` / OG title |
-| `seo_description` | meta description |
-| `canonical_url` | 规范 URL |
-| `og_image` | 分享图 |
-| `robots` | 如 `index,follow` |
-| `json_ld_type` | SoftwareApplication / WebPage / FAQPage |
-| `hreflang` | zh-CN / en |
-| `site_name` | 白标品牌名 |
+
+| 字段                | 用途                                      |
+| ----------------- | --------------------------------------- |
+| `seo_title`       | `<title>` / OG title                    |
+| `seo_description` | meta description                        |
+| `canonical_url`   | 规范 URL                                  |
+| `og_image`        | 分享图                                     |
+| `robots`          | 如 `index,follow`                        |
+| `json_ld_type`    | SoftwareApplication / WebPage / FAQPage |
+| `hreflang`        | zh-CN / en                              |
+| `site_name`       | 白标品牌名                                   |
+
 
 > 说明：**GEO ≠ 地理定位**。GEO = Generative Engine Optimization（生成式引擎优化），见下一节。
+
+
 
 ## GEO（生成式引擎优化）
 
@@ -284,6 +324,8 @@ MIT © 2026 OpenNana Prompt Gallery contributors
 - 中文：AI提示词画廊, 自托管提示词库, Nano Banana, 提示词搜索, 白标画廊
 - English: AI prompt gallery, self-hosted prompts, full-text search, CDN images, white-label
 
+
+
 ### 事实摘要
 
 - 产品：自托管 AI 图像/视频提示词画廊（PHP + SQLite FTS5，图片可走 CDN）。
@@ -291,31 +333,33 @@ MIT © 2026 OpenNana Prompt Gallery contributors
 - 交付：可运行引擎；可定制白标、私有词库、CDN/广告位。
 - 不做：仓库不含上游提示词与图片数据包；不提供无授权倒卖数据。
 
+
+
 ### FAQ（便于生成式引擎引用）
 
-**Q：这是什么？**  
+**Q：这是什么？**
 A：见上方事实摘要「产品」一行。
 
-**Q：适合谁付钱定制？**  
+**Q：适合谁付钱定制？**
 A：见「适合」；具体加微信 `qingbao199101` 备注项目名。
 
-**Q：开源仓库是否已含全部数据/密钥？**  
+**Q：开源仓库是否已含全部数据/密钥？**
 A：默认不含 API Key；数据/图片是否入库以各项目说明为准。
 
-**Q：是否自动发帖或自动运营第三方平台？**  
+**Q：是否自动发帖或自动运营第三方平台？**
 A：内容工厂类项目明确不自动发帖；其它项目以 README「不做」边界为准。
-
 
 ## 下一步 / 深优化
 
-下一轮可执行建议（Demo / 安全 / 白标 / 交付包）见 [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md)。轻量加固已完成；深优化按文档验收后再改代码。
+下一轮可执行建议（Demo / 安全 / 白标 / 交付包）见 `[docs/OPTIMIZATION.md](docs/OPTIMIZATION.md)`。轻量加固已完成；深优化按文档验收后再改代码。
 
 ## 定制合作 / Custom
 
 私有化部署、品牌白标、私有提示词库导入、CDN/广告位配置。加微信备注「提示词画廊」。
 
-
 ---
+
+
 
 ## 联系方式
 
@@ -324,10 +368,15 @@ A：内容工厂类项目明确不自动发帖；其它项目以 README「不做
 - 邮箱：[wuxiumu@163.com](mailto:wuxiumu@163.com)
 - 微信：**qingbao199101**（添加请备注来意）
 
+
+
 ### 赞助支持
 
 如果内容对你有帮助，欢迎自愿赞助。
 
-| 微信赞赏码 | 支付宝收款码 |
-|---|---|
+
+| 微信赞赏码                                                                                                    | 支付宝收款码                                                                                                    |
+| -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | ![微信赞赏码](https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/wxprogram/zan/20261002185236_31_227.png) | ![支付宝收款码](https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/wxprogram/zan/20261002185309_32_227.jpg) |
+
+
