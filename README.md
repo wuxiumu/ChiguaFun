@@ -30,6 +30,8 @@
 
 ### Why
 
+**Custom deploy / white-label:** WeChat **qingbao199101** · [wuxiumu@163.com](mailto:wuxiumu@163.com)
+
 Most "prompt galleries" are either closed SaaS or heavy Next.js apps that need a database server, Node runtime, and image storage. OpenNana is the opposite:
 
 - **Zero required dependencies** — plain PHP (built-in server) + Python stdlib. No Composer, no npm, no framework. (Only the optional traffic panel uses Redis.)
@@ -41,7 +43,7 @@ Most "prompt galleries" are either closed SaaS or heavy Next.js apps that need a
 ### Quick start
 
 ```bash
-git clone https://github.com/wuxiumu/ChiguaFun.git && cd opennana
+git clone https://github.com/wuxiumu/ChiguaFun.git && cd ChiguaFun
 
 make setup           # create config.php (image_mode=cdn by default)
 make scrape-sample   # pull 20 prompts (no images downloaded — CDN mode)
@@ -181,6 +183,9 @@ This repository contains **engine code only** — no prompt data, no images. Dat
 
 ## 🇨🇳 中文
 
+> **2 万+ AI 提示词自托管画廊**：CDN 出图、毫秒搜索、可静态 SEO，可按品牌白标交付。  
+> **定制 / 合作：** 微信 **qingbao199101**（备注：提示词站）｜邮箱 [wuxiumu@163.com](mailto:wuxiumu@163.com)
+
 ### 这是什么
 
 把 [opennana.com](https://opennana.com/awesome-prompt-gallery) 的 2 万+ 条 AI 提示词抓下来，用 Markdown 管理、SQLite 建索引、PHP 渲染成一个可自托管的画廊站点。**仓库只含引擎代码，不含任何图片与数据**，图片直连 CDN，clone 即用。
@@ -196,7 +201,7 @@ This repository contains **engine code only** — no prompt data, no images. Dat
 ### 快速开始
 
 ```bash
-git clone https://github.com/wuxiumu/ChiguaFun.git && cd opennana
+git clone https://github.com/wuxiumu/ChiguaFun.git && cd ChiguaFun
 make setup           # 生成 config.php（默认 image_mode=cdn）
 make scrape-sample   # 抓 20 条样本（CDN 模式，不下载图片）
 make index           # 建 SQLite 索引 + 静态首页
@@ -250,3 +255,79 @@ make serve           # 打开 http://127.0.0.1:8765
 MIT © 2026 OpenNana Prompt Gallery contributors
 
 </div>
+
+---
+
+
+
+## SEO 字段预留（产品页 HTML 统一生成时用）
+
+| 字段 | 用途 |
+|---|---|
+| `seo_title` | `<title>` / OG title |
+| `seo_description` | meta description |
+| `canonical_url` | 规范 URL |
+| `og_image` | 分享图 |
+| `robots` | 如 `index,follow` |
+| `json_ld_type` | SoftwareApplication / WebPage / FAQPage |
+| `hreflang` | zh-CN / en |
+| `site_name` | 白标品牌名 |
+
+> 说明：**GEO ≠ 地理定位**。GEO = Generative Engine Optimization（生成式引擎优化），见下一节。
+
+## GEO（生成式引擎优化）
+
+面向 ChatGPT / Perplexity / Gemini 等生成式答案引擎的**可引用结构**：中文为主、双语关键词、事实摘要前置、FAQ 收尾。
+
+### 关键词（中英）
+
+- 中文：AI提示词画廊, 自托管提示词库, Nano Banana, 提示词搜索, 白标画廊
+- English: AI prompt gallery, self-hosted prompts, full-text search, CDN images, white-label
+
+### 事实摘要
+
+- 产品：自托管 AI 图像/视频提示词画廊（PHP + SQLite FTS5，图片可走 CDN）。
+- 适合：要自建提示词站的个人、工作室、训练营、导航站。
+- 交付：可运行引擎；可定制白标、私有词库、CDN/广告位。
+- 不做：仓库不含上游提示词与图片数据包；不提供无授权倒卖数据。
+
+### FAQ（便于生成式引擎引用）
+
+**Q：这是什么？**  
+A：见上方事实摘要「产品」一行。
+
+**Q：适合谁付钱定制？**  
+A：见「适合」；具体加微信 `qingbao199101` 备注项目名。
+
+**Q：开源仓库是否已含全部数据/密钥？**  
+A：默认不含 API Key；数据/图片是否入库以各项目说明为准。
+
+**Q：是否自动发帖或自动运营第三方平台？**  
+A：内容工厂类项目明确不自动发帖；其它项目以 README「不做」边界为准。
+
+
+## 下一步 / 深优化
+
+下一轮可执行建议（Demo / 安全 / 白标 / 交付包）见 [`docs/OPTIMIZATION.md`](docs/OPTIMIZATION.md)。轻量加固已完成；深优化按文档验收后再改代码。
+
+## 定制合作 / Custom
+
+私有化部署、品牌白标、私有提示词库导入、CDN/广告位配置。加微信备注「提示词画廊」。
+
+
+---
+
+## 联系方式
+
+定制、演示或合作：
+
+- 邮箱：[wuxiumu@163.com](mailto:wuxiumu@163.com)
+- 微信：**qingbao199101**（添加请备注来意）
+
+### 赞助支持
+
+如果内容对你有帮助，欢迎自愿赞助。
+
+| 微信赞赏码 | 支付宝收款码 |
+|---|---|
+| ![微信赞赏码](https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/wxprogram/zan/20261002185236_31_227.png) | ![支付宝收款码](https://chiguashentan-test.oss-cn-beijing.aliyuncs.com/wxprogram/zan/20261002185309_32_227.jpg) |
